@@ -3,20 +3,17 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { MEADOW_CAST } from '../../../shared/content/cast.js';
 import { assetUrl, fetchAsset } from '../net/asset-base.js';
+import { castMotion } from './cast-motion.js';
 
 const templates = new Map();
 const sections = [
-  ['upperarm_l', 'lowerarm_l', 'UpperArmL', 'LowerArmL'],
-  ['lowerarm_l', 'hand_l', 'LowerArmL', 'WristL'],
-  ['upperarm_r', 'lowerarm_r', 'UpperArmR', 'LowerArmR'],
-  ['lowerarm_r', 'hand_r', 'LowerArmR', 'WristR'],
-  ['thigh_l', 'calf_l', 'UpperLegL', 'LowerLegL'],
-  ['calf_l', 'foot_l', 'LowerLegL', 'FootL'],
-  ['thigh_r', 'calf_r', 'UpperLegR', 'LowerLegR'],
-  ['calf_r', 'foot_r', 'LowerLegR', 'FootR'],
+  ['upperarm_l', 'lowerarm_l'], ['lowerarm_l', 'hand_l'],
+  ['upperarm_r', 'lowerarm_r'], ['lowerarm_r', 'hand_r'],
+  ['thigh_l', 'calf_l'], ['calf_l', 'foot_l'],
+  ['thigh_r', 'calf_r'], ['calf_r', 'foot_r'],
 ];
 
-export async function loadCastSkin(body, driver, bones) {
+export async function loadCastSkin(body, driver) {
   if (!Object.hasOwn(MEADOW_CAST, body)) return null;
   if (!templates.has(body)) {
     const pending = fetchAsset(assetUrl(`/assets/cast/${body}.glb`)).then(async (response) => {
@@ -28,62 +25,64 @@ export async function loadCastSkin(body, driver, bones) {
   const object = clone((await templates.get(body)).scene);
   const root = new THREE.Group();
   root.add(object);
-  const box = new THREE.Box3().setFromObject(object);
-  const size = box.getSize(new THREE.Vector3());
+  const bounds = new THREE.Box3().setFromObject(object);
+  const size = bounds.getSize(new THREE.Vector3());
   if (!Number.isFinite(size.y) || size.y <= 0) throw new Error('Invalid character bounds');
-  const center = box.getCenter(new THREE.Vector3());
+  const center = bounds.getCenter(new THREE.Vector3());
   const scale = 1.95 / size.y;
   object.scale.multiplyScalar(scale);
-  object.position.sub(new THREE.Vector3(center.x, box.min.y, center.z).multiplyScalar(scale));
+  object.position.sub(new THREE.Vector3(center.x, bounds.min.y, center.z).multiplyScalar(scale));
   const joints = new Map();
   object.traverse((node) => {
     if (node.isBone) joints.set(node.name, node);
-    if (node.isMesh) { node.castShadow = true; node.frustumCulled = false; }
+    if (node.isMesh) node.castShadow = true;
   });
+
   const from = new THREE.Vector3();
-  const to = new THREE.Vector3();
+  const direction = new THREE.Vector3();
   const aim = new THREE.Quaternion();
-  const parentRotation = new THREE.Quaternion();
-  const links = sections.flatMap(([start, end, source, sourceEnd]) => {
+  const rotation = new THREE.Quaternion();
+  const frame = new THREE.Quaternion();
+  const links = sections.map(([start, end]) => {
     const joint = joints.get(start);
     const tip = joints.get(end);
-    if (!joint || !tip || !bones[source] || !bones[sourceEnd]) return [];
-    const rest = joint.quaternion.clone();
+    if (!joint || !tip) throw new Error('Incomplete character animation rig');
     joint.getWorldPosition(from);
-    tip.getWorldPosition(to);
-    const direction = to.sub(from).normalize().applyQuaternion(joint.parent.getWorldQuaternion(parentRotation).invert());
-    return [{ joint, rest, direction, source: bones[source], end: bones[sourceEnd] }];
+    const bindDirection = tip.getWorldPosition(new THREE.Vector3()).sub(from).normalize()
+      .applyQuaternion(joint.parent.getWorldQuaternion(rotation).invert());
+    return { joint, bindDirection, rest: joint.quaternion.clone() };
   });
-  if (links.length < 8) throw new Error('Incomplete character animation rig');
-  const sourceMeshes = [];
-  driver.traverse((node) => { if (node.isSkinnedMesh) sourceMeshes.push(node); });
-  const hips = bones.Hips;
+  const meshes = [];
+  driver.traverse((node) => { if (node.isSkinnedMesh) meshes.push(node); });
   const head = joints.get('head');
   const headRest = head?.quaternion.clone();
   const euler = new THREE.Euler();
-  const hipsHome = hips?.position.y ?? 0;
-  return {
-    root,
-    update({ sitting = false, riding = false, fishing = false } = {}) {
-      // Special seat poses and rods retain the original rig until individually fitted to the new proportions.
-      const visible = !(sitting || riding || fishing);
-      root.visible = visible;
-      for (const mesh of sourceMeshes) mesh.visible = !visible;
-      if (!visible) return;
-      const offset = hips?.position.y ?? 0;
-      root.position.y = driver.position.y + Math.max(-0.18, Math.min(0.28, offset - hipsHome));
-      for (const link of links) {
-        link.source.getWorldPosition(from);
-        link.end.getWorldPosition(to);
-        const direction = to.sub(from).normalize()
-          .applyQuaternion(link.joint.parent.getWorldQuaternion(parentRotation).invert());
-        aim.setFromUnitVectors(link.direction, direction);
-        link.joint.quaternion.copy(aim).multiply(link.rest);
-      }
-      if (head && bones.Head) {
-        euler.setFromQuaternion(bones.Head.quaternion);
-        head.quaternion.copy(headRest).multiply(aim.setFromEuler(euler.set(euler.x * .25, euler.y * .25, euler.z * .25)));
-      }
-    },
-  };
+  const hand = joints.get('hand_r');
+
+  let lastStaticStance;
+  let staticPoseApplied = false;
+  function update({ time = 0, speed = 0, gesture, age = 0, tool, stance, still = false } = {}) {
+    if (still && staticPoseApplied && stance === lastStaticStance) {
+      root.position.y = driver.position.y;
+      return;
+    }
+    staticPoseApplied = still;
+    lastStaticStance = stance;
+    const pose = castMotion(time, speed, gesture, age, tool, stance, still);
+    root.position.y = driver.position.y + pose.lift;
+    root.rotation.set(pose.lean, 0, pose.sway);
+    root.getWorldQuaternion(frame);
+    for (let i = 0; i < links.length; i++) {
+      const { joint, bindDirection, rest } = links[i];
+      direction.fromArray(pose.limbs[i]).normalize().applyQuaternion(frame)
+        .applyQuaternion(joint.parent.getWorldQuaternion(rotation).invert());
+      joint.quaternion.copy(aim.setFromUnitVectors(bindDirection, direction)).multiply(rest);
+    }
+    if (head) head.quaternion.copy(headRest).multiply(aim.setFromEuler(euler.set(pose.nod, 0, -pose.sway)));
+  }
+
+  // Pose before attaching to avoid a visible bind-pose frame during model loads.
+  update();
+  for (const mesh of meshes) mesh.visible = false;
+  return { root, hand, update };
 }

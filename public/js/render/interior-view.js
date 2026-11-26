@@ -402,7 +402,7 @@ export function makeFigure(body, color, { scale = 1, grandma = false, onReady = 
     const idle = c.clips.get('Idle') || c.clips.get('IdleNeutral');
     if (idle) rec.mixer.clipAction(idle).play();
     if (!grandma && Object.hasOwn(MEADOW_CAST, body)) {
-      loadCastSkin(body, c.object, bones).then((skin) => {
+      loadCastSkin(body, c.object).then((skin) => {
         rec.cast = skin;
         rec.root.add(skin.root);
         skin.update();
@@ -746,7 +746,7 @@ export function createInterior({ renderer = null } = {}) {
       for (const rec of figures.values()) {
         if (!rec.mixer || !rec.root.visible) continue;
         rec.mixer.update(dt);
-        rec.cast?.update();
+        rec.cast?.update({ time: now / 1000, still: motion !== 'full' });
       }
       if (shadowDirty && renderer) { renderer.shadowMap.needsUpdate = true; shadowDirty = false; }
       void now;

@@ -2,6 +2,14 @@
 // together cards, the drip-fed system cards' buttons), ui/recap.js ("Welcome back!") and ui/tutorial.js (Grandma's
 // coach card around the content's own words).
 export default {
+  'moments.wisdom.rest.0': 'You can sit together without filling the silence.',
+  'moments.wisdom.rest.1': 'Ask what would help today. The answer may have changed.',
+  'moments.wisdom.rest.2': 'Some days, making room for each other is enough.',
+  'moments.wisdom.rest.3': 'You can love someone and still need time to yourself.',
+  'moments.wisdom.grow.0': 'Make space for the way your partner likes to do things.',
+  'moments.wisdom.grow.1': 'A promise kept on an ordinary day is how trust grows.',
+  'moments.wisdom.grow.2': 'Ask before helping. Care begins with listening.',
+  'moments.wisdom.grow.3': 'When you get it wrong, name what hurt and give each other time.',
   'moments.lvl.label': 'Farm level {level}!',
   'moments.lvl.word': 'Level up!',
   'moments.lvl.farm': 'Farm level {level}',
