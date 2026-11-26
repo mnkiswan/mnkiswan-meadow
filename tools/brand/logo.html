@@ -1,0 +1,62 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face { font-family: Fredoka; src: url(../../public/assets/fonts/fredoka-latin.woff2) format('woff2'); font-weight: 300 700; }
+html, body { margin: 0; background: transparent; }
+svg { display: block; }
+.word { font-family: Fredoka, sans-serif; font-weight: 700; paint-order: stroke fill; stroke-linejoin: round; }
+</style></head>
+<body>
+<svg id="logo" xmlns="http://www.w3.org/2000/svg" width="W" height="H"></svg>
+<script>
+// Renders the MNKISWAN Meadow wordmark; ?layout=stack (1200x538) or ?layout=wide (1400x336)
+const layout = new URLSearchParams(location.search).get('layout') || 'stack';
+const W = layout === 'wide' ? 1400 : 1200, H = layout === 'wide' ? 336 : 538;
+const svg = document.getElementById('logo');
+svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+const defs = `
+<defs>
+  <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFE7BE"/><stop offset=".45" stop-color="#F2C98C"/><stop offset="1" stop-color="#D89A57"/>
+  </linearGradient>
+  <linearGradient id="meadow" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#C9F07F"/><stop offset=".5" stop-color="#8CCB4C"/><stop offset="1" stop-color="#4E9A2C"/>
+  </linearGradient>
+  <linearGradient id="leaf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A6DD5E"/><stop offset="1" stop-color="#4E9A2C"/></linearGradient>
+  <radialGradient id="petal" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#FFF6F8"/><stop offset="1" stop-color="#F6B9CB"/></radialGradient>
+  <filter id="drop" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="9" stdDeviation="0" flood-color="#3E2612" flood-opacity="1"/></filter>
+</defs>`;
+function word(text, x, y, size, fill, spacing = 6) {
+  return `<g filter="url(#drop)">
+    <text class="word" x="${x}" y="${y}" font-size="${size}" text-anchor="middle" letter-spacing="${spacing}"
+      fill="${fill}" stroke="#4A2C14" stroke-width="${size * 0.16}">${text}</text>
+  </g>`;
+}
+function sprout(x, y, s = 1, r = 0) {
+  return `<g transform="translate(${x} ${y}) rotate(${r}) scale(${s})" stroke="#2F4F17" stroke-width="5" stroke-linejoin="round">
+    <path d="M0 0 C0 -20 2 -38 0 -55" fill="none" stroke="#3F7D22" stroke-width="9" stroke-linecap="round"/>
+    <path d="M0 -50 C-30 -78 -62 -62 -66 -48 C-40 -32 -14 -36 0 -50Z" fill="url(#leaf)"/>
+    <path d="M0 -50 C26 -86 62 -76 70 -62 C44 -40 16 -40 0 -50Z" fill="url(#leaf)"/>
+  </g>`;
+}
+function flower(x, y, s = 1) {
+  let p = '';
+  for (let i = 0; i < 5; i++) p += `<ellipse cx="0" cy="-22" rx="15" ry="22" transform="rotate(${i * 72})" fill="url(#petal)" stroke="#4A2C14" stroke-width="5"/>`;
+  return `<g transform="translate(${x} ${y}) scale(${s})">${p}<circle r="13" fill="#FFC531" stroke="#4A2C14" stroke-width="5"/></g>`;
+}
+function sparkle(x, y, s = 1) {
+  return `<path transform="translate(${x} ${y}) scale(${s})" d="M0 -26 C4 -6 6 -4 26 0 C6 4 4 6 0 26 C-4 6 -6 4 -26 0 C-6 -4 -4 -6 0 -26Z"
+    fill="#FFE27A" stroke="#4A2C14" stroke-width="4" stroke-linejoin="round"/>`;
+}
+let body;
+if (layout === 'wide') {
+  body = word('MNKISWAN', 430, 222, 138, 'url(#wood)', 4) + word('Meadow', 1100, 222, 140, 'url(#meadow)', 2)
+    + sprout(110, 112, .7, -14) + sprout(1310, 108, .7, 12) + flower(1352, 250, .85) + sparkle(800, 72, .8) + sparkle(54, 262, .65) + sparkle(1250, 300, .5);
+} else {
+  body = word('MNKISWAN', 600, 228, 206, 'url(#wood)', 6) + word('Meadow', 600, 452, 216, 'url(#meadow)', 4)
+    + sprout(150, 82, 1, -12) + sprout(1010, 76, .9, 12) + flower(1080, 400, 1.25) + sparkle(1040, 270, .9) + sparkle(110, 410, .8) + sparkle(150, 470, .5);
+}
+svg.innerHTML = defs + body;
+document.fonts.ready.then(() => { document.title = 'ready'; });
+</script>
+</body></html>

@@ -1,0 +1,205 @@
+// Server configuration from the environment. Defaults are the production service values.
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { DEFAULT_TZ } from '../shared/rules/state.js';
+import { PLAYER_SLOTS } from '../shared/content/config.js';
+import { isTimeZone } from '../shared/rules/calendar.js';
+import { STARS_URL } from './stars.js';
+import { agentConfig } from './agent/config.js';
+import { telemetryConfig } from './telemetry/config.js';
+
+export const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+/** The machine's IANA zone (the farm's "midnight" by default), or DEFAULT_TZ when it cannot be read. */
+export function machineTz() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return isTimeZone(tz) ? tz : DEFAULT_TZ;
+  } catch {
+    return DEFAULT_TZ;
+  }
+}
+
+function packageVersion() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version || '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
+
+/** A configuration problem: the process exits with EX_CONFIG (78), which the systemd unit does not restart. */
+export class ConfigError extends Error {}
+
+/**
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {{ port: number, host: string, dataDir: string, dev: boolean, tz: string, tzExplicit: boolean,
+ *   replayAnyway: boolean, passphrase: string|null, slots: number, snapshotMs: number, quiet: boolean, logJson: boolean,
+ *   root: string, version: string, heartbeatMs: number|undefined, anonIdleMs: number|undefined,
+ *   awayGraceMs: number|undefined }}
+ */
+export function loadConfig(env = process.env) {
+  const port = Number(env.PORT);
+  const slots = Number(env.HH_SLOTS);
+  const tz = env.HH_TZ || machineTz();
+  if (!isTimeZone(tz)) throw new ConfigError(`HH_TZ=${tz} is not an IANA time zone (e.g. Europe/Sofia)`);
+  const mode = env.HH_MODE || 'single';
+  if (mode !== 'single' && mode !== 'multi') throw new ConfigError(`HH_MODE=${mode} must be single or multi`);
+  // A public host must never carry the time-warp and drop routes: behind a reverse proxy on the same machine every
+  // visitor would look like loopback to them.
+  if (mode === 'multi' && env.HH_DEV === '1' && env.NODE_ENV === 'production') {
+    throw new ConfigError('HH_DEV=1 is refused in multi-farm mode with NODE_ENV=production (dev routes on a public host)');
+  }
+  return {
+    mode,                                 // 'single' (default: one farm, the LAN game) or 'multi' (hosted, server/multi.js)
+    multi: mode === 'multi' ? multiConfig(env) : null,   // the hosting knobs (multiConfig), multi mode only
+    port: env.PORT !== undefined && env.PORT !== '' && Number.isInteger(port) && port >= 0 && port < 65536 ? port : 3300,
+    host: env.HH_HOST || '0.0.0.0',
+    dataDir: path.resolve(env.HH_DATA_DIR || path.join(ROOT, 'data')),
+    dev: env.HH_DEV === '1',              // dev routes (time warp, drop) on loopback only; never in the unit
+    tz,                                   // the farm's calendar zone (state.meta.tz, review-m0 #3) for a NEW farm
+    tzExplicit: Boolean(env.HH_TZ),       // HH_TZ set: an existing save moves to `tz` too (else it keeps its zone)
+    replayAnyway: env.HH_REPLAY_ANYWAY === '1',   // boot even if the journal does not replay fully (H2)
+    passphrase: env.HH_PASSPHRASE || null, // optional: required to claim or reclaim a slot
+    // claimable player slots: the game is designed and tuned for two (GDD §6.6); up to PLAYER_SLOTS.length
+    slots: Number.isInteger(slots) && slots >= 1 ? Math.min(slots, PLAYER_SLOTS.length) : Math.min(2, PLAYER_SLOTS.length),
+    snapshotMs: Number(env.HH_SNAPSHOT_MS) || 30_000,
+    quiet: env.HH_QUIET === '1',
+    logJson: env.HH_LOG === 'json',       // one JSON object per log line
+    heartbeatMs: Number(env.HH_HEARTBEAT_MS) || undefined,   // tests only (default LIMITS.HEARTBEAT_MS)
+    anonIdleMs: Number(env.HH_ANON_IDLE_MS) || undefined,    // tests only (default sessions.ANON_IDLE_MS)
+    // a player whose last socket closed stays online this long (sessions.AWAY_GRACE_MS); tests may set 0
+    awayGraceMs: env.HH_AWAY_GRACE_MS !== undefined && env.HH_AWAY_GRACE_MS !== '' && Number.isSafeInteger(Number(env.HH_AWAY_GRACE_MS))
+      && Number(env.HH_AWAY_GRACE_MS) >= 0 ? Number(env.HH_AWAY_GRACE_MS) : undefined,
+    root: ROOT,
+    version: packageVersion(),
+    harness: harnessConfig(env),          // the in-game helper (MNKISWAN Meadow): every HH_HARNESS* / HH_MOD* knob
+    telemetry: telemetryConfig(env),      // the helper's opt-in sharing (server/telemetry)
+    assets: assetConfig(env),             // option 2: the game files from the public host (server/asset-origin.js)
+  };
+}
+
+const LOOPBACK_NAME = /^(localhost|127(?:\.\d{1,3}){3}|\[::1\])$/i;
+
+/**
+ * An origin from the environment (scheme, host, optional port; nothing else), or null when unset. https only, except
+ * a loopback or a *.test / *.localhost name with HH_DEV=1 (the e2e lab: tools/e2e-assets.mjs).
+ */
+function originOf(key, raw, { dev }) {
+  if (raw === undefined || raw === '') return null;
+  let u = null;
+  try { u = new URL(raw); } catch { u = null; }
+  if (!u || !/^https?:$/.test(u.protocol)) throw new ConfigError(`${key}=${raw} must be an https origin (https://host[:port])`);
+  if (u.username || u.password || u.search || u.hash || (u.pathname !== '/' && u.pathname !== '')
+    || /[?#]/.test(raw) || /^https?:\/\/[^/]+\/./.test(raw)) {
+    throw new ConfigError(`${key}=${raw} must be an origin only: no path, query, fragment or user name`);
+  }
+  if (u.protocol === 'http:' && !(dev && (LOOPBACK_NAME.test(u.hostname) || /\.(test|localhost)$/i.test(u.hostname)))) {
+    throw new ConfigError(`${key}=${raw}: http is refused (https, or a loopback or *.test name with HH_DEV=1)`);
+  }
+  return u.origin;
+}
+
+/**
+ * Option 2 (release 1.0, docs/qa/release/option2.md D2): where the static game files come from.
+ *   HH_ASSET_ORIGIN      the public host's origin as the BROWSER reaches it (unset = every file from this server)
+ *   HH_ASSET_CHECK_MS    how often this server asks the public host for its build (default 60000, min 5000)
+ *   HH_ASSET_TIMEOUT_MS  that question's timeout (default 4000)
+ *   HH_ASSET_PROBE       tests only: where this server asks, when the browser's host name does not resolve here
+ *                        (refused with NODE_ENV=production)
+ *   HH_ASSET_HOST        on (default) | off: serve /b/<build>/... to other origins; off is the kill switch (every
+ *                        Farmbox's probe then says mismatch and serves itself)
+ */
+export function assetConfig(env = process.env) {
+  const dev = env.HH_DEV === '1';
+  const origin = originOf('HH_ASSET_ORIGIN', env.HH_ASSET_ORIGIN, { dev });
+  let probe = null;
+  if (env.HH_ASSET_PROBE !== undefined && env.HH_ASSET_PROBE !== '') {
+    if (env.NODE_ENV === 'production') throw new ConfigError('HH_ASSET_PROBE is for tests only and refused with NODE_ENV=production');
+    if (!origin) throw new ConfigError('HH_ASSET_PROBE needs HH_ASSET_ORIGIN');
+    probe = originOf('HH_ASSET_PROBE', env.HH_ASSET_PROBE, { dev: true });
+  }
+  const host = env.HH_ASSET_HOST === undefined || env.HH_ASSET_HOST === '' ? 'on' : env.HH_ASSET_HOST;
+  if (host !== 'on' && host !== 'off') throw new ConfigError(`HH_ASSET_HOST=${host} must be on or off`);
+  return {
+    origin,
+    probe: probe || origin,
+    checkMs: posInt(env, 'HH_ASSET_CHECK_MS', 60_000, { min: 5000 }),
+    timeoutMs: posInt(env, 'HH_ASSET_TIMEOUT_MS', 4000, { min: 200 }),
+    host: host === 'on',
+  };
+}
+
+/**
+ * The in-game helper's knobs (docs/agent-notes/harness-contract.md; one block for the four lanes). A set but invalid
+ * value refuses the boot. The agent and telemetry lanes keep their own parsers (server/agent/config.js,
+ * server/telemetry/config.js); they are folded in here so a bad value stops the boot like every other knob.
+ *   cfg.harness            { enabled, mock, modWorkers, modWorkersMax, bootTimeoutMs, renderSmoke, agent }
+ *   cfg.harness.agent      agentConfig(env)      HH_HELPER HH_HELPER_CLAUDE HH_HELPER_CHATGPT HH_HARNESS_MOCK
+ *                                                HH_CLAUDE_* HH_CHATGPT_HOSTING HH_OPENAI_* HH_AGENT_*
+ *                                                HH_HARNESS_JOBS_PER_HOUR / _PER_DAY HH_MOCK_STEP_MS
+ *   cfg.telemetry          telemetryConfig(env)  HH_TELEMETRY HH_TELEMETRY_URL HH_TELEMETRY_RECEIVE HH_TELEMETRY_PER_DAY
+ */
+export function harnessConfig(env = process.env) {
+  let agent;
+  try {
+    agent = agentConfig(env);
+  } catch (err) {
+    throw new ConfigError(err.message);
+  }
+  return {
+    enabled: agent.enabled,                                      // HH_HELPER (single: on, multi: off unless set on)
+    mock: agent.mock,                                            // the scripted mock provider (tests, dev)
+    modWorkers: posInt(env, 'HH_MOD_WORKERS', 2),                // boot tests at once (one worker thread each)
+    modWorkersMax: posInt(env, 'HH_MOD_WORKERS_MAX', 16),        // multi: loaded modded farms (one worker thread each)
+    bootTimeoutMs: posInt(env, 'HH_MOD_BOOT_TIMEOUT_MS', 20_000),
+    renderSmoke: env.HH_RENDER_SMOKE === '1',
+    agent,
+  };
+}
+
+/** A positive integer from the environment, else `dflt` (a set but invalid value is a configuration error). */
+function posInt(env, key, dflt, { min = 1 } = {}) {
+  const raw = env[key];
+  if (raw === undefined || raw === '') return dflt;
+  const n = Number(raw);
+  if (!Number.isSafeInteger(n) || n < min) throw new ConfigError(`${key}=${raw} must be an integer >= ${min}`);
+  return n;
+}
+
+/**
+ * Multi-farm hosting knobs (HH_MODE=multi only; a set but invalid value refuses the boot).
+ * Every duration is in milliseconds except HH_FARM_TTL_DAYS.
+ */
+export function multiConfig(env = process.env) {
+  return {
+    maxFarms: posInt(env, 'HH_MAX_FARMS', 500),              // stored farms; POST /api/farms answers 503 above it
+    ttlDays: posInt(env, 'HH_FARM_TTL_DAYS', 7),             // a farm nobody connected to for this long is deleted
+    sweepMs: posInt(env, 'HH_SWEEP_MS', 60 * 60_000),        // how often the retention sweep runs
+    idleMs: posInt(env, 'HH_FARM_IDLE_MS', 10 * 60_000),     // a loaded farm with no socket this long is unloaded
+    maxLoaded: posInt(env, 'HH_MAX_LOADED', 64),             // LRU cap on farms in memory (idle ones go first)
+    createPerHour: posInt(env, 'HH_CREATE_PER_HOUR', 5),     // new farms per client address
+    createPerDay: posInt(env, 'HH_CREATE_PER_DAY', 20),
+    wsPerIp: posInt(env, 'HH_WS_PER_IP', 16),                // open sockets per client address, all farms together
+    rekeyPerHour: posInt(env, 'HH_REKEY_PER_HOUR', 10),      // new keys for a farmer (POST /api/f/:id/rekey) per address
+    rekeyPerFarmDay: posInt(env, 'HH_REKEY_PER_FARM_DAY', 10), // ... and per farm a day
+    deletePerHour: posInt(env, 'HH_DELETE_PER_HOUR', 10),    // "Delete this farm now" per address (POST /api/f/:id/delete)
+    // reverse proxies in front of the server whose X-Forwarded-For entry is trusted (0 = use the socket address)
+    trustProxy: posInt(env, 'HH_TRUST_PROXY', 1, { min: 0 }),
+    backupHours: posInt(env, 'HH_BACKUP_HOURS', 3),          // per farm: newest backup of each of the last N hours
+    backupDays: posInt(env, 'HH_BACKUP_DAYS', 3),            // ... and of each of the last N days
+    // where the server asks for the landing page's GitHub star count (server/stars.js; 'off' = never ask)
+    starsUrl: starsUrl(env.HH_STARS_URL),
+  };
+}
+
+/** HH_STARS_URL: unset -> the GitHub API's repo URL; 'off' -> null; else an http(s) URL (a test's stand-in). */
+function starsUrl(raw) {
+  if (raw === undefined || raw === '') return STARS_URL;
+  if (raw === 'off') return null;
+  let u = null;
+  try { u = new URL(raw); } catch { u = null; }
+  if (!u || !/^https?:$/.test(u.protocol)) throw new ConfigError(`HH_STARS_URL=${raw} must be an http(s) URL or off`);
+  return u.href;
+}

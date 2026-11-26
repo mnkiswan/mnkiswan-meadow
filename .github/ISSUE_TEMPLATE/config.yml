@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Play MNKISWAN Meadow
+    url: https://mnkiswan.github.io/mnkiswan-meadow
+    about: The hosted game, free in your browser, no account.
+  - name: Questions and show-and-tell
+    url: https://github.com/mnkiswan/mnkiswan-meadow/discussions
+    about: Ask a question or share your farm in Discussions.
