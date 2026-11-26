@@ -50,6 +50,7 @@
 //   seatOf(bench, pid, state) -> { x, z, face } | null   where a seated player sits, metres (pure, tested)
 import * as THREE from 'three';
 import { MEADOW_CAST, animationRig, farmerBody } from '../../../shared/content/cast.js';
+import { GESTURE_TIME } from './cast-motion.js';
 import { loadCastSkin } from './cast-skin.js';
 import { createCompanion } from '../game/companion.js';
 import { TILE_M, START } from '../../../shared/content/config.js';
@@ -423,6 +424,7 @@ export function createAvatarsView(layers, overlay, toScreen) {
   let locateTarget = () => null;
   let clock = 0;
   const pings = [];
+  const castHandPos = new THREE.Vector3();
 
   function ensure(pid, color, name, body) {
     let a = av.get(pid);
@@ -553,7 +555,7 @@ export function createAvatarsView(layers, overlay, toScreen) {
       a.rigOf = body;
       const rig = a.rig;
       if (Object.hasOwn(MEADOW_CAST, body)) {
-        loadCastSkin(body, c.object, bones).then((skin) => {
+        loadCastSkin(body, c.object).then((skin) => {
           if (a.rig !== rig || a.body !== body) return;
           rig.cast = skin;
           a.root.add(skin.root);
@@ -640,6 +642,7 @@ export function createAvatarsView(layers, overlay, toScreen) {
       const grip = gripFrame(a.rig, CARRY.has(want), b.max.y - b.min.y);
       holder.quaternion.copy(grip.q);
       holder.position.copy(grip.p);
+      a.rig.toolGrip = grip.p.clone();
       a.rig.object.updateMatrixWorld(true);
       const ws = a.rig.hand.getWorldScale(new THREE.Vector3());
       const rs = a.root.getWorldScale(new THREE.Vector3());
@@ -672,6 +675,7 @@ export function createAvatarsView(layers, overlay, toScreen) {
     a.bubble.animate(motion === 'full' ? [{ transform: 'scale(0.2)', opacity: 0 }, { transform: 'scale(1.15)', opacity: 1, offset: 0.6 }, { transform: 'scale(1)' }] : [{ opacity: 0 }, { opacity: 1 }],
       { duration: 250, easing: 'ease-out', composite: 'add' });
     const clip = Object.hasOwn(EMOTE_CLIP, kind) ? EMOTE_CLIP[kind] : null;
+    if (Object.hasOwn(GESTURE_TIME, kind)) a.castGesture = { kind, at: clock };
     if (clip) playOnce(a, clip);
   }
 
@@ -697,7 +701,10 @@ export function createAvatarsView(layers, overlay, toScreen) {
     const other = pb ? av.get(pb) : [...av.values()].find((x) => x.pid !== pa && x.online);
     if (!a) return;
     const pair = other ? [a, other] : [a];
-    for (const x of pair) playOnce(x, 'Wave', { scale: 1.6 });            // both raise a hand toward the other
+    for (const x of pair) {
+      x.castGesture = { kind: 'highFive', at: clock };
+      playOnce(x, 'Wave', { scale: 1.6 });
+    }            // both raise a hand toward the other
     if (other && a.pose && other.pose) {
       a.faceTo = Math.atan2(other.pose.x - a.pose.x, other.pose.z - a.pose.z);
       other.faceTo = Math.atan2(a.pose.x - other.pose.x, a.pose.z - other.pose.z);
@@ -1582,6 +1589,7 @@ export function createAvatarsView(layers, overlay, toScreen) {
           const d = Math.hypot(a.pending.x + 0.5 - a.pose.x, a.pending.z + 0.5 - a.pose.z);
           if ((d < 2.2 && a.speed < 0.6) || clock > a.pending.until) {
             if (a.pending.tool) setTool(a, a.pending.tool);
+            a.castGesture = { kind: 'work', at: clock };
             playOnce(a, 'Interact', { scale: 1.25 });
             a.pending = null;
           }
@@ -1591,7 +1599,22 @@ export function createAvatarsView(layers, overlay, toScreen) {
         sitPose(a, sk, seat);
         if (a.riding) want = Math.max(want, ridePose(a, dt));
         if (a.fish) want = Math.max(want, fishPose(a, dt));
-        a.rig.cast?.update({ sitting: sk > 0, riding: a.riding, fishing: a.fish });
+        if (a.rig.cast) {
+          const gesture = a.castGesture;
+          const age = gesture ? clock - gesture.at : 0;
+          if (gesture && age >= GESTURE_TIME[gesture.kind]) a.castGesture = null;
+          a.rig.cast.update({
+            time: clock, speed: a.speed, gesture: a.castGesture?.kind, age, tool: a.tool,
+            stance: a.fish ? 'fish' : a.riding ? 'ride' : sk > 0 ? 'seat' : null,
+            still: motion === 'still',
+          });
+          const toolObject = a.rig.toolObj;
+          if (toolObject && a.rig.cast.hand && a.rig.toolGrip) {
+            // Keep the original tool orientation and fit its position to the textured hand.
+            toolObject.position.copy(a.rig.hand.worldToLocal(a.rig.cast.hand.getWorldPosition(castHandPos))).add(a.rig.toolGrip);
+          }
+          if (a.castGesture && motion !== 'still') want = Math.max(want, WANT.MOVING);
+        }
         placeCrown(a, !!crown && crown.pids.has(a.pid) && t < crown.until && (a.online || a.self));
         if (sk === 0 && !a.seat) a.lastSeat = null;
         // still: frames only while a farmer actually moves (performance-08)
@@ -1730,6 +1753,7 @@ export function createAvatarsView(layers, overlay, toScreen) {
           if (a.riding) setRiding(a, false);
           if (a.fish) { a.fish = null; a.fishSeat = null; }
           a.pending = null;
+          a.castGesture = null;
           a.buf.clear();
           setTool(a, null);
         }

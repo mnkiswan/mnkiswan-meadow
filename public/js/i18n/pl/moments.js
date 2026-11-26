@@ -1,5 +1,13 @@
 // Polish catalog, area 'moments' (lane A): the same keys and {params} as en/moments.js.
 export default {
+  'moments.wisdom.rest.0': 'Możecie posiedzieć razem w ciszy.',
+  'moments.wisdom.rest.1': 'Zapytaj, co dziś pomoże. Odpowiedź mogła się zmienić.',
+  'moments.wisdom.rest.2': 'Czasem wystarczy zrobić dla siebie nawzajem trochę miejsca.',
+  'moments.wisdom.rest.3': 'Można kogoś kochać i nadal potrzebować czasu dla siebie.',
+  'moments.wisdom.grow.0': 'Zostaw miejsce na to, by druga osoba robiła coś po swojemu.',
+  'moments.wisdom.grow.1': 'Zaufanie rośnie, gdy dotrzymujesz obietnic w zwykłe dni.',
+  'moments.wisdom.grow.2': 'Zanim pomożesz, zapytaj. Troska zaczyna się od słuchania.',
+  'moments.wisdom.grow.3': 'Gdy popełnisz błąd, nazwij to, co zabolało, i dajcie sobie czas.',
   'moments.lvl.label': 'Poziom farmy {level}!',
   'moments.lvl.word': 'Nowy poziom!',
   'moments.lvl.farm': 'Poziom farmy {level}',

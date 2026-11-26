@@ -483,10 +483,15 @@ export function createLevelup(S) {
           things: ev.recipe ? [{ icon: ev.recipe, name: () => (CONTENT.recipes.get(ev.recipe) ? cname(ev.recipe, { family: 'recipes' }) : ev.recipe) }] : [], ttl: 7000 });
         return 0;
       case 'together': {
+        const reflection = (group) => {
+          const day = Math.floor(store.now() / 86_400_000);
+          const index = ((day % 4) + 4) % 4;
+          return t(`moments.wisdom.${group}.${index}`);
+        };
         if (ev.kind === 'goldenHour') {
           ui.banner({ id: 'golden', kind: 'golden', ribbon: t('moments.golden.title'),
-            message: () => t('moments.golden.text', { d: fmtDuration((ev.until ?? 0) - store.now(), { cut: 's<10' }) }),
-            things: [], ttl: 10000 });
+            message: () => `${t('moments.golden.text', { d: fmtDuration((ev.until ?? 0) - store.now(), { cut: 's<10' }) })} ${reflection('rest')}`,
+            things: [], ttl: 12000 });
           S.hud?.renderBuffs();
           return 0;
         }
@@ -506,7 +511,7 @@ export function createLevelup(S) {
         const text = () => (ev.kind === 'combo' ? t('moments.together.combo', { n: ev.at ?? '' }).trim()
           : ev.kind === 'challenge' ? t('moments.together.challenge')
             : ev.kind === 'task' ? t('moments.together.task') : t('moments.together.any'));
-        ui.toast(() => `${text()} ♥`, { kind: 'love', ms: 3200 });
+        ui.toast(() => `${text()} ♥ ${reflection('grow')}`, { kind: 'love', ms: 6500 });
         return 0;
       }
       case 'bloomed':

@@ -34,7 +34,7 @@ test('S2-20: the day\'s together task finished alone names the deed; a farm of t
   try {
     for (const [lang, solo, duo] of [
       ['en', /^Task of the day done: 60 crops harvested$/, /Together task done!/],
-      ['bg', /^Задачата на деня е готова: 60 прибрани посева$/, /Общата задача е готова!/],
+      ['pl', /^Zadanie dnia gotowe: zebrano 60 upraw$/, /Wspólne zadanie gotowe!/],
     ]) {
       await I.setLang(lang);
       const one = setup(['p1']);
@@ -44,6 +44,7 @@ test('S2-20: the day\'s together task finished alone names the deed; a farm of t
       assert.doesNotMatch(one.toasts[0][0], /♥/, 'no hearts for a farmer alone');
       const two = setup(['p1', 'p2']);
       two.lu.celebrate({ e: 'together', kind: 'task', tpl: 'harvest_together', by: 'p1' });
+      assert.match(two.toasts[0][0], /♥ .+\.$/, 'the shared moment includes one localized reflection');
       assert.match(two.toasts[0][0], duo, `${lang} two farmers: ${two.toasts[0][0]}`);
     }
   } finally { await I.setLang('en'); }
