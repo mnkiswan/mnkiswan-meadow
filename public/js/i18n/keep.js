@@ -4,6 +4,6 @@
 import { register } from './core.js';
 import keep from './en/keep.js';
 
-register('keep', keep, () => import('./bg/keep.js'));
+register('keep', keep, () => import('./pl/keep.js'));
 
 export * from './core.js';

@@ -18,7 +18,7 @@ import { t, Q, ctext, lang, name as cname } from '../../i18n/index.js';
 /** A neighbour's name, job and lines in the language in effect (names table; npcs roles: text-b, lines: text-c). */
 const npcName = (id) => (npcOf(id) ? cname(id) : t('weekly.folk.neighbour'));
 // a role is a label here: its first letter up (the CSS capitalises every word only for English)
-const npcRole = (id) => { const r = String(ctext('npcs', id, 'role', npcOf(id)?.role ?? '')); return r && lang() === 'bg' ? r[0].toLocaleUpperCase('bg') + r.slice(1) : r; };
+const npcRole = (id) => { const r = String(ctext('npcs', id, 'role', npcOf(id)?.role ?? '')); return r && lang() === 'pl' ? r[0].toLocaleUpperCase('pl') + r.slice(1) : r; };
 const npcLines = (id) => ctext('npcs', id, 'lines', npcOf(id)?.lines ?? []);
 
 const FR = TOWNSFOLK.friendship;
@@ -28,7 +28,7 @@ export function giftOf(npc, k) {
   const g = FR.rewards?.[npc]?.[k - 1];
   if (!g) return null;
   if (g.decor) return { kind: 'decor', id: g.decor, name: defOf(g.decor) ? cname(g.decor) : g.decor };
-  if (g.card) return { kind: 'card', id: g.card, name: t('weekly.folk.card', { npc: npcOf(npc) ? cname(npc, { form: lang() === 'bg' ? 'lc' : 'label' }) : t('weekly.folk.their'), item: itemOf(g.card) ? cname(g.card) : g.card }) };
+  if (g.card) return { kind: 'card', id: g.card, name: t('weekly.folk.card', { npc: npcOf(npc) ? cname(npc, { form: lang() === 'pl' ? 'lc' : 'label' }) : t('weekly.folk.their'), item: itemOf(g.card) ? cname(g.card) : g.card }) };
   return null;
 }
 

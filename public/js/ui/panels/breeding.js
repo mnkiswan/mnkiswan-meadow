@@ -26,7 +26,7 @@ const coatEnglish = (id) => COAT_NAMES[id] ?? BREEDING.seasonCoats?.find((c) => 
 export const coatName = (id) => {
   if (lang() === 'en') return coatEnglish(id);
   const s = ctext('coats', id, 'name', has(`home.breed.coat.${id}`) ? t(`home.breed.coat.${id}`) : coatEnglish(id));
-  return s ? s[0].toLocaleUpperCase('bg') + s.slice(1) : s;
+  return s ? s[0].toLocaleUpperCase('pl') + s.slice(1) : s;
 };
 /** The baby noun with its article ("теленцето"), for Bulgarian lines about one baby. */
 const nounDef = (sp) => t(`home.nursery.nounDef.${['chicken', 'cow', 'sheep', 'pig', 'duck', 'goat', 'horse', 'alpaca', 'rabbit', 'bison', 'quail'].includes(sp) ? sp : 'other'}`);
@@ -135,7 +135,7 @@ function goldenLine(n, noun) {
 function oddsBox(v, sp) {
   return h('div.br-odds', { role: 'list', 'aria-label': t('home.breed.oddsAria') },
     ...v.odds.map((c) => h('div.br-odd', { role: 'listitem' }, coatSwatch(c.id, { size: 34 }),
-      h('span', h('b', coatName(c.id)), h('small', `${fmtDec(c.bp / 100, 2)}${lang() === 'bg' ? '\u00a0' : ' '}%`)),
+      h('span', h('b', coatName(c.id)), h('small', `${fmtDec(c.bp / 100, 2)}${lang() === 'pl' ? '\u00a0' : ' '}%`)),
       bar(c.bp / 4000, null, `pn-thin br-odd-bar br-odd-${c.id}`))),
     sp ? h('p.br-golden', svgIcon('star', 18), goldenLine(sp.goldenIn, sp.noun)) : null);
 }

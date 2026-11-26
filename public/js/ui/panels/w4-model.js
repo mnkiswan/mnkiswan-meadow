@@ -20,7 +20,7 @@ const own = (o, k) => (isObj(o) && Object.hasOwn(o, k) ? o[k] : undefined);
 const MIN = 60_000;
 const pct = (bp) => {
   const v = bp / 100;
-  return `${Number.isInteger(v) ? fmtNum(v) : fmtDec(v, 1)}${lang() === 'bg' ? '\u00a0' : ' '}%`;   // bg: the % never starts a line
+  return `${Number.isInteger(v) ? fmtNum(v) : fmtDec(v, 1)}${lang() === 'pl' ? '\u00a0' : ' '}%`;   // bg: the % never starts a line
 };
 
 /** One short line per bonus key ("+40 Barn space", "Watering saves 5 % more time"). Pure. */

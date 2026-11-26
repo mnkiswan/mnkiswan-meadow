@@ -248,7 +248,7 @@ export const TREE_ORDER = Object.freeze(Array.isArray(PK.PERK_TREES) ? [...PK.PE
 export const TREE_NAMES = getters({ grower: () => t('league.perk.tree.grower'), rancher: () => t('league.perk.tree.rancher'),
   orchardist: () => t('league.perk.tree.orchardist'), artisan: () => t('league.perk.tree.artisan') });
 
-const pct = (bp) => (lang() === 'bg' ? `${fmtDec(bp / 100, 1)}\u00a0%` : `${(bp / 100).toFixed(bp % 100 ? 1 : 0)}%`);
+const pct = (bp) => (lang() === 'pl' ? `${fmtDec(bp / 100, 1)}\u00a0%` : `${(bp / 100).toFixed(bp % 100 ? 1 : 0)}%`);
 
 /** The words of one perk effect (content PERKS.trees[tree][i]), as the GDD §4.7 table says it. */
 export function perkText(tree, i, fx = PERKS.trees[tree]?.[i] ?? {}) {
@@ -357,7 +357,7 @@ export function duelScoreText(n, scale = 1) {
   const whole = Math.floor(v / s);
   const q = v % s;
   if (!q) return String(whole);
-  const frac = s === 4 ? ['', '¼', '½', '¾'][q] : s === 2 ? '½' : `${lang() === 'bg' ? ',' : '.'}${String(Math.round((q * 100) / s)).padStart(2, '0')}`;
+  const frac = s === 4 ? ['', '¼', '½', '¾'][q] : s === 2 ? '½' : `${lang() === 'pl' ? ',' : '.'}${String(Math.round((q * 100) / s)).padStart(2, '0')}`;
   return `${whole || (s === 4 || s === 2 ? '' : '0')}${frac}`;
 }
 

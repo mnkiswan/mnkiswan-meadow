@@ -1282,7 +1282,7 @@ export function bootShare({ el, p = null, p0 = null }) {
 function lineAt(share) {
   const pct = $('boot-pct');
   const bar = $('boot-prog');
-  if (pct) pct.textContent = ` ${Math.round(share * 100)}${lang() === 'bg' ? ' %' : '%'}`;
+  if (pct) pct.textContent = ` ${Math.round(share * 100)}${lang() === 'pl' ? ' %' : '%'}`;
   if (bar) bar.style.width = `${(share * 100).toFixed(1)}%`;
 }
 /** The HUD's own pictures (icons, portraits) loaded, or 1.5 s gone: the HUD never comes in as empty circles. */
@@ -1405,7 +1405,7 @@ if (typeof document !== 'undefined') {
     const href = String(mf?.getAttribute('href') ?? '');
     if (!mf || href.startsWith('data:')) return;
     if (href.startsWith('/f/')) mf.setAttribute('href', farmManifestHref(href, l));
-    else mf.setAttribute('href', l === 'bg' ? '/manifest.bg.webmanifest' : '/manifest.webmanifest');
+    else mf.setAttribute('href', String(mf.getAttribute('href')).replace(/manifest(\.pl)?\.webmanifest/, l === 'pl' ? 'manifest.pl.webmanifest' : 'manifest.webmanifest'));
   });
   onLang(() => {
     const b = $('boot');

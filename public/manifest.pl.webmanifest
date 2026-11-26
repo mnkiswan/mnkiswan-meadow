@@ -1,7 +1,7 @@
 {
   "name": "MNKISWAN Meadow",
   "short_name": "MNKISWAN Meadow",
-  "description": "Уютна ферма за двама, споделена в домашната ви мрежа.",
+  "description": "Przytulna farma 3D w twojej przeglądarce, od MNKISWAN Studio.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
@@ -9,29 +9,33 @@
   "orientation": "any",
   "background_color": "#D6F1FF",
   "theme_color": "#4C9A3E",
-  "lang": "bg",
+  "lang": "pl",
   "dir": "ltr",
   "categories": [
     "games",
     "entertainment"
   ],
   "icons": [
-    { "src": "/assets/pwa/icon-192.png",
+    {
+      "src": "/assets/pwa/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
-    { "src": "/assets/pwa/icon-512.png",
+    {
+      "src": "/assets/pwa/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
-    { "src": "/assets/pwa/icon-maskable-192.png",
+    {
+      "src": "/assets/pwa/icon-maskable-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
-    { "src": "/assets/pwa/icon-maskable-512.png",
+    {
+      "src": "/assets/pwa/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

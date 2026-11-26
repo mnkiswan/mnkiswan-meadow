@@ -476,7 +476,7 @@ export function blockerText(state, blockers) {
   if (!ids.length) return t('market.blocker.edge');
   const nameOf = (id) => {
     const o = Object.hasOwn(state.farm.objects, id) ? state.farm.objects[id] : null;
-    return o ? (state.farm.names?.[id]?.name ?? (defOf(o.def) ? cname(o.def, { form: lang() === 'bg' ? 'lc' : 'label' }) : null) ?? t('market.blocker.something')) : t('market.blocker.something');
+    return o ? (state.farm.names?.[id]?.name ?? (defOf(o.def) ? cname(o.def, { form: lang() === 'pl' ? 'lc' : 'label' }) : null) ?? t('market.blocker.something')) : t('market.blocker.something');
   };
   // several pieces of one thing (a fence run) say its plural: "Picket Fences are in the way", never "Picket Fence are"
   const count = new Map();

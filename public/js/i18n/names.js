@@ -1,7 +1,7 @@
 // Content names by language (lane A API over lane B's table, docs/agent-notes/i18n-core.md "Content names").
-// English comes from the content tables themselves (shared/content: generated, never edited); Bulgarian from
-// i18n/bg/names.js, keyed by content id, loaded only with the Bulgarian catalogs. A missing Bulgarian entry falls back
-// to the English name (and counts in "Name ×3" form, so a sentence never gets English grammar glued to Bulgarian).
+// English comes from the content tables themselves (shared/content: generated, never edited); Polish from
+// i18n/bg/names.js, keyed by content id, loaded only with the Polish catalogs. A missing Polish entry falls back
+// to the English name (and counts in "Name ×3" form, so a sentence never gets English grammar glued to Polish).
 //
 //   name(id, { form?, family? }) -> string    form: 'label' (default: a title or a button, "Пшеница"), 'short' (tight
 //                                             labels, "Тръстика"), 'lc' (inside a sentence, "пшеница"), 'pl' (plural),
@@ -11,11 +11,11 @@
 //                                             form 'chip': "пшеница ×5" / "Wheat ×5" (inventory chips, tight lists)
 //   N(id, family?) / Q(id, n, family?)        refs for t() params: t('x', { crop: N('wheat') }) and in the catalog
 //                                             '{crop}' '{crop:def}' '{crop:count}'; '{q}' renders the quantity
-//   gender(id) -> 'm' | 'f' | 'n' | 'pl' | null   the Bulgarian gender (adjective agreement: catalog { m, f, n })
+//   gender(id) -> 'm' | 'f' | 'n' | 'pl' | null   the Polish gender (adjective agreement: catalog { m, f, n })
 //   ctext(family, id, field, english) -> any  a content text field (a description, a letter's body) in the language in
 //                                             effect, else the English value given
 //   setNameOverlay({ bg: { [id]: entry } })   (additive, MNKISWAN Meadow mods lane; harness contract §2.6) a farm's mod
-//                                             things' Bulgarian entries, merged over bg/names.js; English comes from the
+//                                             things' Polish entries, merged over bg/names.js; English comes from the
 //                                             installed defs (the English index is rebuilt)
 //
 // Entry shape in i18n/bg/names.js (lane B), keyed by content id ('family:id' overrides an id shared by families):
@@ -26,8 +26,8 @@ import { lang, data, registerData, setRefRenderer, touchTwin } from './core.js';
 import { fmtNum } from './core.js';
 import { CONTENT, PLACEABLES, itemOf, pluralOf, lookup } from '../../../shared/content/index.js';
 
-registerData('names', () => import('./bg/names.js'));
-registerData('text', () => import('./bg/text.js'));
+registerData('names', () => import('./pl/names.js'));
+registerData('text', () => import('./pl/text.js'));
 
 /** The English def for an id: placeables first, then items, then any family that has it. */
 const enIndex = new Map();
@@ -51,15 +51,15 @@ const enName = (id, family) => {
 };
 
 let modNames = {};
-/** A farm's mod things' Bulgarian entries (MNKISWAN Meadow); the English index follows the installed content. */
+/** A farm's mod things' Polish entries (MNKISWAN Meadow); the English index follows the installed content. */
 export function setNameOverlay(overlay = {}) {
-  modNames = overlay && overlay.bg && typeof overlay.bg === 'object' ? { ...overlay.bg } : {};
+  modNames = overlay && overlay.pl && typeof overlay.pl === 'object' ? { ...overlay.pl } : {};
   enIndex.clear();
 }
 
-/** The Bulgarian entry for an id (or null: English is shown). */
+/** The Polish entry for an id (or null: English is shown). */
 export function entry(id, family) {
-  if (lang() !== 'bg') return null;
+  if (lang() !== 'pl') return null;
   if (typeof id === 'string' && Object.hasOwn(modNames, id)) return modNames[id];
   const tbl = data('names');
   if (!tbl) return null;
@@ -67,7 +67,7 @@ export function entry(id, family) {
   return (family && n[`${family}:${id}`]) || n[id] || null;
 }
 
-const lowerFirst = (s) => (s ? s[0].toLocaleLowerCase('bg') + s.slice(1) : s);
+const lowerFirst = (s) => (s ? s[0].toLocaleLowerCase('pl') + s.slice(1) : s);
 
 /** A content name in the asked form (see the header). */
 export function name(id, { form = 'label', family } = {}) {
@@ -78,20 +78,41 @@ export function name(id, { form = 'label', family } = {}) {
     return form === 'pl' || form === 'count' ? pluralOf(en, 2) : form === 'lc' && lang() === 'en' ? en.toLowerCase() : en;
   }
   const lc = e.lc ?? (e.proper ? e.name : lowerFirst(e.name));
+  // Polish (docs/i18n-polish-guide.md): no articles, so the Polish definite forms fall back to the cases
   switch (form) {
     case 'short': return e.short ?? e.name;
-    case 'lc': return lc;
-    case 'pl': return e.pl ?? lc;
-    case 'count': return e.count ?? e.pl ?? lc;
-    case 'def': return e.def ?? lc;
-    case 'defObj': return e.defObj ?? e.def ?? lc;
-    case 'plDef': return e.plDef ?? (e.unit ? e.def : e.pl) ?? lc;   // a mass noun: "пшеницата"
+    case 'lc': case 'def': return lc;
+    case 'acc': case 'defObj': return e.acc ?? lc;
+    case 'gen': return e.genSg ?? lc;
+    case 'pl': case 'plDef': return e.pl ?? lc;
+    case 'count': return e.gen ?? e.pl ?? lc;
     case 'cap': return e.name;
     default: return e.name;
   }
 }
 
-/** The Bulgarian gender of a content name ('m' | 'f' | 'n' | 'pl'), or null. */
+/** Polish count agreement: 'one' (1), 'few' (2-4, 22-24... not 12-14), 'many' (the rest). */
+export function plCase(n) {
+  const v = Math.abs(Math.trunc(Number(n) || 0));
+  if (v === 1) return 'one';
+  const d = v % 10;
+  const t = v % 100;
+  return d >= 2 && d <= 4 && (t < 12 || t > 14) ? 'few' : 'many';
+}
+
+/** The noun as it follows the number n: 'marchewka' / 'marchewki' / 'marchewek', a mass noun with its unit. */
+function plNoun(e, id, n, family) {
+  const c = plCase(n);
+  if (Array.isArray(e.unit)) {
+    const u = c === 'one' ? e.unit[0] : c === 'few' ? e.unit[1] ?? e.unit[0] : e.unit[2] ?? e.unit[1] ?? e.unit[0];
+    return `${u} ${e.genSg ?? name(id, { form: 'lc', family })}`;
+  }
+  if (c === 'one') return e.one ?? name(id, { form: 'lc', family });
+  if (c === 'few') return e.pl ?? e.name;
+  return e.gen ?? e.pl ?? e.name;
+}
+
+/** The Polish gender of a content name ('m' | 'f' | 'n' | 'pl'), or null. */
 export function gender(id, family) {
   const e = entry(id, family);
   return e ? e.g ?? null : null;
@@ -106,13 +127,10 @@ export function qty(id, n, { family, form } = {}) {
   const e = entry(id, family);
   if (form === 'chip') return `${e ? name(id, { form: 'lc', family }) : enName(id, family)} ×${fmtNum(v)}`;
   if (!e) {
-    if (lang() === 'bg') return `${enName(id, family)} ×${fmtNum(v)}`;
+    if (lang() === 'pl') return `${enName(id, family)} ×${fmtNum(v)}`;
     return `${fmtNum(v)} ${pluralOf(enName(id, family), v)}`;
   }
-  const one = v === 1;
-  if (Array.isArray(e.unit)) return `${fmtNum(v)} ${one ? e.unit[0] : e.unit[1] ?? e.unit[0]} ${name(id, { form: 'lc', family })}`;
-  if (one) return `1 ${e.one ?? name(id, { form: 'lc', family })}`;
-  return `${fmtNum(v)} ${e.g === 'm' ? e.count ?? e.pl : e.pl ?? e.name}`;
+  return `${fmtNum(v)} ${plNoun(e, id, v, family)}`;
 }
 
 /** A content-name ref for t() params ('{crop}', '{crop:def}'). */
@@ -123,14 +141,13 @@ export const Q = (id, n, family) => ({ $qty: id, n, family });
 setRefRenderer((ref, form) => {
   if (Object.hasOwn(ref, '$qty')) {
     if (form === 'chip') return qty(ref.$qty, ref.n, { family: ref.family, form: 'chip' });
-    // a float over the farm ("+3 Wheat"): English has always shown the bare name; Bulgarian counts properly
+    // a float over the farm ("+3 Wheat"): English has always shown the bare name; Polish counts properly
     if (form === 'float') return entry(ref.$qty, ref.family) ? qty(ref.$qty, ref.n, { family: ref.family }) : `${fmtNum(ref.n)} ${enName(ref.$qty, ref.family)}`;
     if (form === 'noun') {
       // the noun alone as it follows this count ("моркова" / "Carrots"), for a sentence that prints the number itself
       const e = entry(ref.$qty, ref.family);
       if (!e) return pluralOf(enName(ref.$qty, ref.family), ref.n);
-      if (Array.isArray(e.unit)) return `${ref.n === 1 ? e.unit[0] : e.unit[1] ?? e.unit[0]} ${name(ref.$qty, { form: 'lc', family: ref.family })}`;
-      return ref.n === 1 ? e.one ?? name(ref.$qty, { form: 'lc', family: ref.family }) : e.g === 'm' ? e.count ?? e.pl : e.pl ?? e.name;
+      return plNoun(e, ref.$qty, ref.n, ref.family);
     }
     return qty(ref.$qty, ref.n, { family: ref.family });
   }
@@ -138,11 +155,11 @@ setRefRenderer((ref, form) => {
 }, (ref) => gender(ref.$name ?? ref.$qty, ref.family));
 
 /**
- * A content text field in the language in effect: Bulgarian from i18n/bg/text.js ({ [family]: { [id]: { field } } },
+ * A content text field in the language in effect: Polish from i18n/bg/text.js ({ [family]: { [id]: { field } } },
  * lanes B and C) when it has one, else the English value the caller already holds. `field` may be a path ('letter.body').
  */
 export function ctext(family, id, field, english) {
-  if (lang() !== 'bg') return english;
+  if (lang() !== 'pl') return english;
   if (field === 'desc' || field === 'name') {
     const e = entry(id, family);
     if (e && e[field] !== undefined) {

@@ -3,6 +3,6 @@
 import { register } from './core.js';
 import harness from './en/harness.js';
 
-register('harness', harness, () => import('./bg/harness.js'));
+register('harness', harness, () => import('./pl/harness.js'));
 
 export * from './core.js';

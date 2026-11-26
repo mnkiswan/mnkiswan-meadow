@@ -32,39 +32,39 @@ import boot from './en/boot.js';
 /** [area, English catalog, Bulgarian loader] in load order. */
 export const AREAS = [
   // lane A: core and shell
-  ['core', core, () => import('./bg/core.js')],
-  ['shell', shell, () => import('./bg/shell.js')],
-  ['hud', hud, () => import('./bg/hud.js')],
-  ['toolbar', toolbar, () => import('./bg/toolbar.js')],
-  ['toasts', toasts, () => import('./bg/toasts.js')],
-  ['moments', moments, () => import('./bg/moments.js')],
-  ['settings', settings, () => import('./bg/settings.js')],
-  ['social', social, () => import('./bg/social.js')],
-  ['game', game, () => import('./bg/game.js')],
-  ['multi', multi, () => import('./bg/multi.js')],
+  ['core', core, () => import('./pl/core.js')],
+  ['shell', shell, () => import('./pl/shell.js')],
+  ['hud', hud, () => import('./pl/hud.js')],
+  ['toolbar', toolbar, () => import('./pl/toolbar.js')],
+  ['toasts', toasts, () => import('./pl/toasts.js')],
+  ['moments', moments, () => import('./pl/moments.js')],
+  ['settings', settings, () => import('./pl/settings.js')],
+  ['social', social, () => import('./pl/social.js')],
+  ['game', game, () => import('./pl/game.js')],
+  ['multi', multi, () => import('./pl/multi.js')],
   // lane B: league and weekly panels (the content names table is i18n/bg/names.js)
-  ['league', league, () => import('./bg/league.js')],
-  ['weekly', weekly, () => import('./bg/weekly.js')],
+  ['league', league, () => import('./pl/league.js')],
+  ['weekly', weekly, () => import('./pl/weekly.js')],
   // lane C: feed, Journal, goals and quests
-  ['feed', feed, () => import('./bg/feed.js')],
-  ['goals', goals, () => import('./bg/goals.js')],
+  ['feed', feed, () => import('./pl/feed.js')],
+  ['goals', goals, () => import('./pl/goals.js')],
   // lane D: economy, collect and home panels
-  ['market', market, () => import('./bg/market.js')],
-  ['farm', farm, () => import('./bg/farm.js')],
-  ['collect', collect, () => import('./bg/collect.js')],
-  ['home', home, () => import('./bg/home.js')],
+  ['market', market, () => import('./pl/market.js')],
+  ['farm', farm, () => import('./pl/farm.js')],
+  ['collect', collect, () => import('./pl/collect.js')],
+  ['home', home, () => import('./pl/home.js')],
   // multi-farm hosting: the keys (a lost device's way back), privacy, and the landing page's words (also the game's
   // ideas card and star card). 'keep' and 'front' are also registered on their own (i18n/keep.js, i18n/front.js) by
   // the modules the landing page shares: register() keeps the first.
-  ['keep', keep, () => import('./bg/keep.js')],
-  ['privacy', privacy, () => import('./bg/privacy.js')],
-  ['front', front, () => import('./bg/front.js')],
+  ['keep', keep, () => import('./pl/keep.js')],
+  ['privacy', privacy, () => import('./pl/privacy.js')],
+  ['front', front, () => import('./pl/front.js')],
   // release 1.0 (docs/agent-briefs/release-scope.md §3 step 0): one new area per lane, so no two lanes share a
   // catalog. dock: ui-shell; cheer: life-feel; feat: features; boot: infra (harvey keeps 'harness', infra 'front').
-  ['dock', dock, () => import('./bg/dock.js')],
-  ['cheer', cheer, () => import('./bg/cheer.js')],
-  ['feat', feat, () => import('./bg/feat.js')],
-  ['boot', boot, () => import('./bg/boot.js')],
+  ['dock', dock, () => import('./pl/dock.js')],
+  ['cheer', cheer, () => import('./pl/cheer.js')],
+  ['feat', feat, () => import('./pl/feat.js')],
+  ['boot', boot, () => import('./pl/boot.js')],
 ];
 
 /**
@@ -73,7 +73,7 @@ export const AREAS = [
  * ui/harness/boot.js only when the farm's server offers the helper).
  */
 export const LAZY_AREAS = [
-  ['harness', () => import('./en/harness.js'), () => import('./bg/harness.js')],
+  ['harness', () => import('./en/harness.js'), () => import('./pl/harness.js')],
 ];
 
 /** Every area with its English catalog loaded: [area, en, () => import(bg)] (tests and tools). */

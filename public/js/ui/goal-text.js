@@ -28,13 +28,13 @@ export function prep(s) {
   return s.replace(/(^|[\s(„])([вВ]) (?=[вфВФ])/g, '$1$2ъв ').replace(/(^|[\s(„])([сС]) (?=[сзСЗ])/g, '$1$2ъс ');
 }
 
-/** A wait in the cards' clock words, Bulgarian: "4:05", "2:15 ч", "23 ч 59 мин". */
+/** A wait in the cards' clock words, Polish: "4:05", "2:15 godz.", "23 godz. 59 min". */
 export function mmssBg(v) {
   const s = Math.max(0, Math.ceil(v / 1000));
   if (s < 3600) return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   const m = Math.ceil(s / 60);
-  if (m < 600) return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')} ч`;
-  return `${Math.floor(m / 60)} ч ${String(m % 60).padStart(2, '0')} мин`;
+  if (m < 600) return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}\u00a0godz.`;
+  return `${Math.floor(m / 60)}\u00a0godz. ${String(m % 60).padStart(2, '0')}\u00a0min`;
 }
 
 /** One param for t(): content refs stay refs (so the template may ask {x:defObj}), the rest is a number or text. */

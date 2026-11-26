@@ -89,7 +89,7 @@ fs.writeFileSync(path.join(OUT, 'public/assets/packs/index.json'), JSON.stringif
 void packSpecs;
 
 // 5. the web app manifests: start at this page, icons under the base
-for (const name of ['manifest.webmanifest', 'manifest.bg.webmanifest']) {
+for (const name of ['manifest.webmanifest', 'manifest.pl.webmanifest']) {
   const f = path.join(OUT, 'public', name);
   if (!fs.existsSync(f)) continue;
   const m = JSON.parse(fs.readFileSync(f, 'utf8'));

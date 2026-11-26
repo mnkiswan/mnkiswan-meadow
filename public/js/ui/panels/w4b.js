@@ -65,8 +65,8 @@ export function lootText(ev) {
     if (l.coins) parts.push(tn('common.coins', l.coins));
     if (l.xp) parts.push(t('common.xp', { n: l.xp }));
     if (l.acorns) parts.push(tn('common.acorns', l.acorns));
-    for (const x of l.items) parts.push(x.n > 1 ? bgCount(x.id, x.n) : bgName(x.id).toLocaleLowerCase('bg'));
-    for (const d of l.decor) parts.push(bgName(d).toLocaleLowerCase('bg'));
+    for (const x of l.items) parts.push(x.n > 1 ? bgCount(x.id, x.n) : bgName(x.id).toLocaleLowerCase('pl'));
+    for (const d of l.decor) parts.push(bgName(d).toLocaleLowerCase('pl'));
     return list(parts);
   }
   if (l.coins) parts.push(`${fmt(l.coins)} coins`);

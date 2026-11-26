@@ -180,20 +180,20 @@
       <p class="boot-line" id="boot-line"><span class="spin" aria-hidden="true"></span><span id="boot-text" role="status" aria-live="polite">Waking up the farm…</span><span class="boot-pct" id="boot-pct" aria-hidden="true"></span>
         <span class="boot-prog" aria-hidden="true"><i id="boot-prog"></i></span></p>
       <!-- the language toggle (i18n): works before any module has loaded (the inline script below), remembered per device -->
-      <div class="lang-pick" role="group" aria-label="English / Български"><button type="button" class="lang-opt" data-lang="en" lang="en">English</button><span class="lang-dot" aria-hidden="true">·</span><button type="button" class="lang-opt" data-lang="bg" lang="bg">Български</button></div>
+      <div class="lang-pick" role="group" aria-label="English / Polski"><button type="button" class="lang-opt" data-lang="en" lang="en">English</button><span class="lang-dot" aria-hidden="true">·</span><button type="button" class="lang-opt" data-lang="pl" lang="pl">Polski</button></div>
     </div>
   </section>
-  <!-- i18n boot (lane A): the language before main.js loads: the remembered choice, else the browser's (bg* -> Bulgarian).
+  <!-- i18n boot (lane A): the language before main.js loads: the remembered choice, else the browser's (pl* -> Polish).
        It sets <html lang>, the boot line and the toggle; a tap stores the choice and tells i18n/core.js (event hh:pick-lang),
        which switches the whole page once it is loaded. Keep the logic in step with i18n/core.js detectLang. -->
   <script>
     (function () {
-      var T = { en: 'Waking up the farm\u2026', bg: '\u0424\u0435\u0440\u043c\u0430\u0442\u0430 \u0441\u0435 \u0441\u044a\u0431\u0443\u0436\u0434\u0430\u2026' };
+      var T = { en: 'Waking up the farm\u2026', pl: 'Budzimy farmę…' };
       var L = '';
       try { L = localStorage.getItem('hh.lang') || ''; } catch (e) { L = ''; }
-      if (L !== 'en' && L !== 'bg') {
+      if (L !== 'en' && L !== 'pl') {
         var n = (navigator.languages && navigator.languages[0]) || navigator.language || '';
-        L = /^bg\b/i.test(n) ? 'bg' : 'en';
+        L = /^pl\b/i.test(n) ? 'pl' : 'en';
       }
       var opts = document.querySelectorAll('#boot .lang-opt');
       function paint(l, text) {
@@ -223,7 +223,7 @@
           var k = Math.min(0.6, 0.52 * files + (done ? 0.08 * Math.min(1, (now - done) / 8000) : 0));
           if (k <= shown) return;
           shown = k;
-          pct.textContent = ' ' + Math.round(k * 100) + (L === 'bg' ? ' %' : '%');
+          pct.textContent = ' ' + Math.round(k * 100) + '%';
           if (bar) bar.style.width = (k * 100).toFixed(1) + '%';
         };
         if (window.PerformanceObserver) {
@@ -235,7 +235,7 @@
       } catch (e) { /* no observer: the line stays words only */ }
       // the home-screen app's description in the chosen language (the name stays "MNKISWAN Meadow")
       var mf = document.querySelector('link[rel="manifest"]');
-      if (mf && L === 'bg') mf.setAttribute('href', '/manifest.bg.webmanifest');
+      if (mf && L === 'pl') mf.setAttribute('href', String(mf.getAttribute('href')).replace('manifest.webmanifest', 'manifest.pl.webmanifest'));
       for (var i = 0; i < opts.length; i++) {
         opts[i].addEventListener('click', function (e) {
           var l = e.currentTarget.getAttribute('data-lang');

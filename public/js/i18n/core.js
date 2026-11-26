@@ -3,7 +3,7 @@
 // (i18n/index.js) registers every area, the landing page registers only its own (i18n/multi.js, i18n/front.js; the way
 // back's i18n/keep.js on demand), so the front door never downloads the game's text.
 //
-//   lang() -> 'en' | 'bg'                     the language in effect (English until a catalog has loaded)
+//   lang() -> 'en' | 'pl'                     the language in effect (English until a catalog has loaded)
 //   setLang(l) -> Promise                     load l's catalogs (lazy: Bulgarian is fetched only when chosen), switch,
 //                                             remember it on this device, set <html lang>, re-label [data-i18n] nodes and
 //                                             tell every onLang listener (they re-render)
@@ -35,12 +35,12 @@
 
 import { lazyImport } from '../net/lazy.js';
 
-export const LANGS = Object.freeze(['en', 'bg']);
+export const LANGS = Object.freeze(['en', 'pl']);
 /** Each language in its own words: the picker's labels, never translated. */
-export const LANG_NAMES = Object.freeze({ en: 'English', bg: 'Български' });
+export const LANG_NAMES = Object.freeze({ en: 'English', pl: 'Polski' });
 /** Number and date locales per language (English keeps exactly the formats the game always had). */
-const NUM_LOCALE = { en: 'en-US', bg: 'bg-BG' };
-const DATE_LOCALE = { en: 'en-GB', bg: 'bg-BG' };
+const NUM_LOCALE = { en: 'en-US', pl: 'pl-PL' };
+const DATE_LOCALE = { en: 'en-GB', pl: 'pl-PL' };
 export const STORAGE_KEY = 'hh.lang';
 
 const isBrowser = typeof document !== 'undefined' && typeof window !== 'undefined';
@@ -52,7 +52,7 @@ const isBrowser = typeof document !== 'undefined' && typeof window !== 'undefine
 export function detectLang(stored, navLangs = []) {
   if (LANGS.includes(stored)) return stored;
   const first = (Array.isArray(navLangs) ? navLangs : [navLangs]).find((l) => typeof l === 'string' && l);
-  return first && /^bg\b/i.test(first) ? 'bg' : 'en';
+  return first && /^pl\b/i.test(first) ? 'pl' : 'en';
 }
 
 function readStored() {
@@ -88,20 +88,20 @@ export const wantedLang = () => want;
 function loadArea(a) {
   if (a.bg || !a.load) return Promise.resolve();
   if (!a.loading) {
-    a.loading = lazyImport(`bg/${a.name}`, a.load).then((m) => {
+    a.loading = lazyImport(`pl/${a.name}`, a.load).then((m) => {
       a.bg = (m && (m.default ?? m.catalog)) || {};
       Object.assign(BG, a.bg);
     }).catch((err) => {
       a.loading = null;
-      console.warn(`i18n: the Bulgarian catalog '${a.name}' did not load`, err);
+      console.warn(`i18n: the Polish catalog '${a.name}' did not load`, err);
     });
   }
   return a.loading;
 }
 function loadData(d) {
-  if (d.value.bg !== undefined || !d.load) return Promise.resolve();
+  if (d.value.pl !== undefined || !d.load) return Promise.resolve();
   if (!d.loading) {
-    d.loading = lazyImport(`bg/${d.name}`, d.load).then((m) => { d.value.bg = (m && (m.default ?? m)) || null; })
+    d.loading = lazyImport(`pl/${d.name}`, d.load).then((m) => { d.value.pl = (m && (m.default ?? m)) || null; })
       .catch((err) => { d.loading = null; console.warn(`i18n: '${d.name}' did not load`, err); });
   }
   return d.loading;
@@ -114,7 +114,7 @@ function loadAll(l) {
 let firstLoad = null;
 /** The first language's catalogs are in (always resolves; a failed Bulgarian load falls back to English). */
 export function ready() {
-  if (!firstLoad) firstLoad = loadAll(want).then(() => { if (want === 'bg') switchTo('bg', { quiet: true }); });
+  if (!firstLoad) firstLoad = loadAll(want).then(() => { if (want === 'pl') switchTo('pl', { quiet: true }); });
   return firstLoad;
 }
 
@@ -136,7 +136,7 @@ export function register(name, en, bgLoader) {
   const a = { name, en, bg: null, load: bgLoader || null, loading: null };
   areas.set(name, a);
   // an area registered after the first load (a lazily imported panel) loads at once and re-renders when it lands
-  if (want === 'bg' && firstLoad) loadArea(a).then(() => { if (cur === 'bg') emit(); });
+  if (want === 'pl' && firstLoad) loadArea(a).then(() => { if (cur === 'pl') emit(); });
 }
 
 /** Lazy per-language data that is not a catalog (the content names table): data(name) is null until loaded. */
@@ -144,7 +144,7 @@ export function registerData(name, bgLoader) {
   if (datas.has(name)) return;
   const d = { name, load: bgLoader, value: {}, loading: null };
   datas.set(name, d);
-  if (want === 'bg' && firstLoad) loadData(d).then(() => { if (cur === 'bg') emit(); });
+  if (want === 'pl' && firstLoad) loadData(d).then(() => { if (cur === 'pl') emit(); });
 }
 export function data(name) {
   const d = datas.get(name);
@@ -181,7 +181,7 @@ export async function setLang(l, { persist = true } = {}) {
   await (firstLoad || ready());
   await loadAll(l);
   if (want !== l) return cur;                      // a newer choice won meanwhile
-  if (l === 'bg' && ![...areas.values()].some((a) => a.bg)) { want = cur; return cur; }   // offline: stay as we are
+  if (l === 'pl' && ![...areas.values()].some((a) => a.bg)) { want = cur; return cur; }   // offline: stay as we are
   if (cur !== l) switchTo(l);
   else if (from !== l) emit();                     // the first load switched quietly on its way: say so now
   return cur;
@@ -220,7 +220,7 @@ export function raw(key) {
   return undefined;
 }
 export const has = (key) => raw(key) !== undefined;
-/** Keys the Bulgarian catalog lacked this session (English was shown): the dev console's checklist. */
+/** Keys the Polish catalog lacked this session (English was shown): the dev console's checklist. */
 export const missingKeys = () => [...missing];
 
 let refRender = null;
@@ -456,18 +456,18 @@ export const fmtNum = (n) => numFormat(0).format(Math.trunc(Number(n) || 0));
 /** A number with up to `digits` decimals: 1.5 / 1,5. */
 export const fmtDec = (n, digits = 1) => numFormat(digits).format(Number(n) || 0);
 /** A percent: 10% / 10 % (a no-break space in Bulgarian). */
-export const fmtPct = (n, digits = 0) => (cur === 'bg' ? `${fmtDec(n, digits)} %` : `${fmtDec(n, digits)}%`);
+export const fmtPct = (n, digits = 0) => `${fmtDec(n, digits)}%`;
 
 /**
  * A number short enough for a pill: English 12.3k / 1.2M (as always); Bulgarian shows the full grouped number up to
- * 999 999 ("12,3 хил." is wider than "12 345") and "1,2 млн." above.
+ * 999 999 ("12,3 хил." is wider than "12 345") and "1,2 mln" above.
  */
 export function fmtShort(n) {
   const v = Math.trunc(Number(n) || 0);
   const a = Math.abs(v);
-  if (cur === 'bg') {
+  if (cur === 'pl') {
     if (a < 1_000_000) return fmtNum(v);
-    return `${fmtDec(v / 1_000_000, 1)} млн.`;
+    return `${fmtDec(v / 1_000_000, 1)} mln`;
   }
   if (a < 10_000) return fmtNum(v);
   if (a < 1_000_000) return `${(v / 1000).toFixed(a < 100_000 ? 1 : 0).replace(/\.0$/, '')}k`;
@@ -480,7 +480,7 @@ export function fmtShort(n) {
 const NB = ' ';
 const UNITS = {
   en: { s: (n) => `${n}s`, m: (n) => `${n}m`, h: (n) => `${n}h`, d: (n) => `${n}d` },
-  bg: { s: (n) => `${n}${NB}сек`, m: (n) => `${n}${NB}мин`, h: (n) => `${n}${NB}ч`, d: (n) => `${n}${NB}${n === 1 ? 'ден' : 'дни'}` },
+  pl: { s: (n) => `${n}${NB}s`, m: (n) => `${n}${NB}min`, h: (n) => `${n}${NB}godz.`, d: (n) => `${n}${NB}${Number(n) === 1 ? 'dzień' : 'dni'}` },
 };
 /**
  * A duration: '2h 05m' | '4m 10s' | '12s' | '3d 4h' (English, as always) / '2 ч 05 мин' | '4 мин 10 сек' (Bulgarian).
@@ -554,11 +554,7 @@ export function ordinal(n, g = 'm') {
   const v = Math.trunc(Number(n) || 0);
   const tens = Math.abs(v) % 100;
   const last = Math.abs(v) % 10;
-  if (cur === 'bg') {
-    const stem = tens >= 11 && tens <= 19 ? 'т' : last === 1 ? 'в' : last === 2 ? 'р' : last === 7 || last === 8 ? 'м' : 'т';
-    const end = g === 'f' ? 'а' : g === 'n' ? 'о' : 'и';
-    return `${v}-${stem}${end}`;
-  }
+  if (cur === 'pl') return `${v}.`;
   const suf = tens >= 11 && tens <= 13 ? 'th' : last === 1 ? 'st' : last === 2 ? 'nd' : last === 3 ? 'rd' : 'th';
   return `${v}${suf}`;
 }
@@ -567,7 +563,7 @@ export function ordinal(n, g = 'm') {
 export function fmtSigned(n) {
   const v = Math.trunc(Number(n) || 0);
   if (v > 0) return `+${fmtNum(v)}`;
-  if (v < 0) return `${cur === 'bg' ? '−' : '-'}${fmtNum(-v)}`;
+  if (v < 0) return `${cur === 'pl' ? '−' : '-'}${fmtNum(-v)}`;
   return fmtNum(0);
 }
 

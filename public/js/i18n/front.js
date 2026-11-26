@@ -4,6 +4,6 @@
 import { register } from './core.js';
 import front from './en/front.js';
 
-register('front', front, () => import('./bg/front.js'));
+register('front', front, () => import('./pl/front.js'));
 
 export * from './core.js';

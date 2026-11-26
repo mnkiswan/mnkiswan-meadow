@@ -7,7 +7,7 @@ Plant, harvest, raise animals, craft and grow a whole valley. Made with care by
 <a href="https://mnkiswan.com/">MNKISWAN Studio</a>.</p>
 
 <p align="center"><a href="https://mnkiswan.github.io/mnkiswan-meadow/"><b>▶ Play now in your browser</b></a> ·
-English &amp; Български</p>
+English &amp; Polski</p>
 
 <p align="center">
   <img src="docs/screenshots/hero.png" alt="Two farmers on the sunset bench during Golden Hour, a busy farm around them" width="900">

@@ -4,6 +4,6 @@
 import { register } from './core.js';
 import privacy from './en/privacy.js';
 
-register('privacy', privacy, () => import('./bg/privacy.js'));
+register('privacy', privacy, () => import('./pl/privacy.js'));
 
 export * from './core.js';
