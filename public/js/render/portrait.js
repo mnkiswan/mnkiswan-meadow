@@ -28,6 +28,9 @@
 //
 // render/index.js exposes it as `view.portrait(spec)` (the ui never sees the renderer).
 
+import { MEADOW_CAST, farmerBody } from '../../../shared/content/cast.js';
+import { assetUrl } from '../net/asset-base.js';
+
 export const PORTRAIT = Object.freeze({
   v: 3,                 // bump when the drawing changes (3: the release-1.0 colour grade): every cached portrait is drawn again (a new farmer model is in the key)
                         // (2: hats fitted over the head and hair; the frame grows to hold a tall hat)
@@ -62,7 +65,9 @@ function bodyOf(pid, player) {
 /** What a farmer's portrait depends on. Pure. */
 export function portraitSpec(pid, player) {
   const color = player && typeof player.color === 'string' && HEX.test(player.color) ? player.color.toUpperCase() : '#2BB3A3';
-  return { pid: String(pid), body: bodyOf(pid, player), color, avatar: (player && player.avatar) || null };
+  const body = farmerBody(pid, player);
+  return { pid: String(pid), body: bodyOf(pid, player), color, avatar: player?.avatar ?? null,
+    ...(Object.hasOwn(MEADOW_CAST, body) ? { cast: body } : {}) };
 }
 
 // The farmer model's manifest entry goes into the key, so a rebuilt farmer (another mesh, size or own hat) is drawn again
@@ -78,6 +83,7 @@ function rigSig(body) {
 /** The cache key of a spec: the rig (and its model), the look's fields and the colour (never the name: a portrait has
  *  no letters). Pure for a given farmer model. */
 export function portraitKey(spec) {
+  if (Object.hasOwn(MEADOW_CAST, spec?.cast)) return `cast:${spec.cast}`;
   const a = spec && spec.avatar && typeof spec.avatar === 'object' ? spec.avatar : {};
   const look = LOOK_FIELDS.map((k) => (typeof a[k] === 'string' ? (HEX.test(a[k]) ? a[k].toUpperCase() : a[k]) : '')).join(',');
   const body = spec && spec.body ? spec.body : bodyOf(spec && spec.pid, { avatar: a });
@@ -112,6 +118,7 @@ function writeStore(key, url, spec) {
 
 /** The cached portrait of a spec, or null. Never draws. */
 export function peekPortrait(spec) {
+  if (Object.hasOwn(MEADOW_CAST, spec?.cast)) return assetUrl(`/assets/cast/${spec.cast}.webp`);
   const key = portraitKey(spec);
   if (mem.has(key)) return mem.get(key);
   const e = readStore()[key];

@@ -18,7 +18,7 @@
 //        interpolated on its own server time rts (ts = the batch time, a fallback); hop 1 = snap + poof.
 //        The partner's cursor (cx, cz) is the second hand of wind.
 //   view.partner.ghost(pid, g|null)   the partner's build ghost { def, x, z, rot }
-//   view.partner.online(pid, bool)    peer join/leave (offline partners are hidden)
+//   view.partner.online(pid, bool)    peer join/leave (offline partners follow the local farmer)
 //   view.partner.pose(pid) -> {x, z, f, a} | null
 //   view.me.update(pose {x, z, f, a}) my own avatar, drawn at its true position immediately
 //   view.fx.play(event, worldPos?, { by, local }?)  feedback for a domain event ({ e: 'harvested', id, ... });
@@ -982,7 +982,7 @@ export const view = {
     R.objects.setMe(R.me);
     R.objects.setState(state);
     call(R.animals, 'setState', state);
-    R.avatars.setPlayers(state.players, me);
+    R.avatars.setPlayers(state.players, me, state);
     call(R.avatars, 'setSeats', state.farm.coop?.bench || {}, state);
     call(R.life, 'setState', state);
     call(R.baths, 'setState', state);
@@ -1365,6 +1365,7 @@ export const view = {
       dirty = true;
     },
     pose(pid) { return R.avatars.poseOf(pid); },
+    isOnline(pid) { return R.avatars.isOnline(pid); },
   },
 
   me: {

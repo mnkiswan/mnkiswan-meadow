@@ -150,7 +150,7 @@ test('front: the landing page as served: no game data, a small first view, the r
   assert.equal((landing.match(/<link[^>]+rel="preload"[^>]+as="font"/g) || []).length, 1, 'one font');
   // the carved wordmark of the game's farmer picker (release 1.0 O7: one logo from the landing page into the game)
   assert.match(landing, /<img src="\/assets\/art\/logo-wide\.webp\?v=[0-9a-f]+" srcset="[^"]*logo-wide_880\.webp 880w, \/assets\/art\/logo-wide\.webp 1400w"/);
-  assert.match(landing, /<img class="ld-orb-still" src="\/assets\/landing\/farm-orbit\.webp\?v=[0-9a-f]+"/);
+  assert.match(landing, /<img class="ld-orb-still" src="\/assets\/landing\/storybook-farm\.webp\?v=[0-9a-f]+"/);
   // the video, the sheets and the screenshots never ride in the page: they come after the first paint, when asked
   assert.ok(!/<video|\.webm\b|\.mp4\b|shot-\d/.test(landing.replace(/<!--[\s\S]*?-->/g, '')), 'no video or screenshot in the first view');
   assert.ok(!/<link[^>]+(ideas|style|farm)\.css/.test(landing), 'the sheets\' styles come with the sheets');

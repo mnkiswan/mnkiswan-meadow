@@ -5,6 +5,8 @@
 //
 //   lookSvg(look, { size?, part? }) -> <svg>     the paper doll (pure DOM; part 'head' draws a head-and-hat thumbnail)
 //   avatarPanel.mount(body, ctx)
+import { MEADOW_CAST } from '../../../../shared/content/cast.js';
+import { assetUrl } from '../../net/asset-base.js';
 import { h, svgIcon, createKit, fill } from './kit.js';
 import { actFor } from './w4-rules.js';
 import { LOOKS, lookOf, lookPatch } from './w4-model.js';
@@ -169,6 +171,14 @@ const GROUPS = [
 ];
 const OPTIONS = { body: LOOKS.bodies, hair: LOOKS.hair, hat: LOOKS.hats, hairColor: LOOKS.hairColor, skin: LOOKS.skin, top: LOOKS.top, bottom: LOOKS.bottom };
 
+function figurePreview(look, size, label = '') {
+  if (!Object.hasOwn(MEADOW_CAST, look.body)) return lookSvg(look, { size, label });
+  return h('img', {
+    src: assetUrl(`/assets/cast/${look.body}.webp`), alt: label ? MEADOW_CAST[look.body].name : '',
+    width: size, height: size, style: { objectFit: 'contain', borderRadius: '10px' },
+  });
+}
+
 const same = (a, b) => JSON.stringify(lookPatch(a)) === JSON.stringify(lookPatch(b));
 
 export const avatarPanel = {
@@ -181,18 +191,19 @@ export const avatarPanel = {
 
     function paintPreview() {
       const me = ctx.store.state.players[ctx.store.pid];
-      preview.replaceChildren(lookSvg(draft, { size: 168, label: me?.name ? t('home.avatar.doll', { name: me.name }) : t('home.avatar.dollYou') }));
+      preview.replaceChildren(figurePreview(draft, 168, me?.name ? t('home.avatar.doll', { name: me.name }) : t('home.avatar.dollYou')));
       preview.style.setProperty('--who', me?.color ?? '#2BB3A3');
       const dirty = !same(draft, saved());
       status.textContent = dirty ? t('home.avatar.unsaved') : t('home.avatar.seen');
       status.classList.toggle('dirty', dirty);
+      dice.hidden = Object.hasOwn(MEADOW_CAST, draft.body);
       kit.refresh();
     }
 
     function option(g, o) {
       const { id, name } = o;
       const on = String(draft[g.key]).toLowerCase() === String(id).toLowerCase();
-      const thumb = g.kind === 'figure' ? lookSvg({ ...draft, body: id }, { size: 46 })
+      const thumb = g.kind === 'figure' ? figurePreview({ ...draft, body: id }, 46)
         // a hair style is seen without the hat over it
         : g.kind === 'head' ? lookSvg({ ...draft, ...(g.key === 'hair' ? { hat: 'none' } : {}), [g.key]: id }, { size: 52, part: 'head' })
           : h('span.av-swatch-dot', { style: { background: id } });
@@ -207,7 +218,7 @@ export const avatarPanel = {
     function renderGroups() {
       const a = document.activeElement;
       const key = a && groupsEl.contains(a) ? a.dataset.key : null;
-      groupsEl.replaceChildren(...GROUPS.map((g) => h('fieldset.av-group', h('legend', g.label),
+      groupsEl.replaceChildren(...GROUPS.filter((g) => g.key === 'body' || !Object.hasOwn(MEADOW_CAST, draft.body)).map((g) => h('fieldset.av-group', h('legend', g.label),
         h(`div.av-opts.av-${g.kind}s`, { role: 'radiogroup', 'aria-label': g.label, on: { keydown: (e) => arrows(e) } },
           ...OPTIONS[g.key].map((o) => option(g, o))))));
       if (key) groupsEl.querySelector(`[data-key="${CSS.escape(key)}"]`)?.focus({ preventScroll: true });

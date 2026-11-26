@@ -4,6 +4,7 @@
 //   upgradeInfo(state, id) / upgradeList(state) / upgradeReady(state) / bonusLines(bonus)     wish E
 //   sellPlacedQuote(state, id, now) / sellStoredQuote(state, def) / storedDecor(state) / newestTrash(state, by, def)  wish A
 //   LOOKS / lookOf(state, pid) / lookPatch(look)                                               wish 9
+import { farmerBody } from '../../../../shared/content/cast.js';
 import * as C from '../../../../shared/content/index.js';
 import * as DE from '../../../../shared/rules/actions/decor.js';
 import { defOf } from '../../../../shared/content/index.js';
@@ -204,7 +205,7 @@ export const LOOKS = (() => {
 function defaultLook(pid) {
   const d = isObj(LOOKS.defaults[pid]) ? LOOKS.defaults[pid] : null;
   return {
-    body: d?.body ?? (pid === 'p2' ? 'farmer_b' : 'farmer_a'), hair: d?.hair ?? (pid === 'p2' ? 'long' : 'short'),
+    body: farmerBody(pid), hair: d?.hair ?? (pid === 'p2' ? 'long' : 'short'),
     hairColor: d?.hairColor ?? LOOKS.hairColor[1]?.id ?? '#4A3022', skin: d?.skin ?? LOOKS.skin[1]?.id ?? '#EFC9A8',
     top: d?.top ?? LOOKS.top[0]?.id ?? '#2BB3A3', bottom: d?.bottom ?? LOOKS.bottom[0]?.id ?? '#3E6FA8', hat: d?.hat ?? 'none',
   };
@@ -218,6 +219,7 @@ export function lookOf(state, pid) {
   const p = own(state?.players, pid);
   const a = isObj(p?.avatar) ? p.avatar : {};
   const out = defaultLook(pid);
+  out.body = farmerBody(pid, p);
   for (const k of LOOK_KEYS) if (typeof a[k] === 'string' && a[k]) out[k] = a[k];
   for (const k of COLOUR_KEYS) if (typeof out[k] === 'string') out[k] = out[k].toUpperCase();
   return out;

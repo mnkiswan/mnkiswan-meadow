@@ -22,6 +22,12 @@ test('portraitSpec: the rig the farm draws (farmer 2 is B, a chosen build wins),
   assert.equal(portraitSpec('p1', null).avatar, null);
 });
 
+test('storybook cast portraits are available without a WebGL portrait render', () => {
+  assert.match(peekPortrait(portraitSpec('p1', {})), /\/cast\/mnki\.webp$/);
+  assert.match(peekPortrait(portraitSpec('p2', {})), /\/cast\/swan\.webp$/);
+  assert.match(peekPortrait(portraitSpec('p2', { avatar: { body: 'cat_girl' } })), /\/cast\/cat_girl\.webp$/);
+});
+
 test('portraitKey: the look, rig and colour only; stable across key order and hex case; never the name or the XP', () => {
   const look = { hat: 'cap', hair: 'curly', hairColor: '#c8473a' };
   const a = portraitKey(portraitSpec('p1', { name: 'Rowan', xp: 10, color: '#2BB3A3', avatar: look }));
@@ -41,7 +47,7 @@ test('the cache: a stored portrait is found at once (no draw at boot); lastPortr
   mem.set('hh.portraits', JSON.stringify({ [portraitKey(spec)]: { u: url, pid: 'p2', c: '#FF7A6B', t: 5 },
     'p0|old|#FFFFFF|': { u: 'data:image/png;base64,OLD', pid: 'p2', c: '#FF7A6B', t: 9 } }));
   assert.equal(peekPortrait(spec), url);
-  assert.equal(peekPortrait(portraitSpec('p2', { color: '#FF7A6B' })), null, 'another look is not that picture');
+  assert.equal(peekPortrait(portraitSpec('p2', { color: '#FF7A6B', avatar: { body: 'farmer_b' } })), null, 'another look is not that picture');
   assert.equal(lastPortrait('p2', '#ff7a6b'), url, 'an entry of an older drawing version is ignored');
   assert.equal(lastPortrait('p1', '#FF7A6B'), null);
 });
@@ -49,7 +55,7 @@ test('the cache: a stored portrait is found at once (no draw at boot); lastPortr
 test('drawPortrait: no WebGL (a lost context) resolves null and the key rests, so a chip never re-asks in a loop', async () => {
   let asked = 0;
   const lost = { getContext: () => { asked++; return { isContextLost: () => true }; } };
-  const spec = portraitSpec('p1', { color: '#5DBB3F' });
+  const spec = portraitSpec('p1', { color: '#5DBB3F', avatar: { body: 'farmer_a' } });
   const first = drawPortrait(lost, spec);
   assert.equal(drawPortrait(lost, spec), first, 'one request per look while it is on its way');
   assert.equal(await first, null);
@@ -70,7 +76,7 @@ test('the chip face: the initial until the portrait is decoded; a stale answer n
   const face = portraitFace('K');
   assert.equal(face.querySelector('.ltr').textContent, 'K');
   // no view.portrait (the render lane's hook not there, or no WebGL): the initial stays and nothing is pending
-  showPortrait(face, portraitSpec('p1', { color: '#4AA8E8' }), {});
+  showPortrait(face, portraitSpec('p1', { color: '#4AA8E8', avatar: { body: 'farmer_a' } }), {});
   assert.equal(face.classList.contains('has-portrait'), false);
   assert.equal(face.dataset.pk, undefined);
   // a view that answers later: the first look's answer arrives after a second look was asked for
@@ -91,7 +97,7 @@ test('the chip face: the initial until the portrait is decoded; a stale answer n
   assert.equal(face.querySelector('img.pf').src, 'data:image/webp;base64,TWO');
   // a draw that failed: the face forgets the key, so the next players change asks again (after the module's rest)
   const f2 = portraitFace('D');
-  showPortrait(f2, portraitSpec('p2', { color: '#9B6BD6' }), { portrait: () => Promise.resolve(null) });
+  showPortrait(f2, portraitSpec('p2', { color: '#9B6BD6', avatar: { body: 'farmer_b' } }), { portrait: () => Promise.resolve(null) });
   await new Promise((r) => setTimeout(r, 0));
   assert.equal(f2.dataset.pk, undefined);
   assert.equal(f2.classList.contains('has-portrait'), false);

@@ -330,13 +330,13 @@ function onWelcome(w) {
   view.setState(store.state, { me: w.pid });
   if (firstWelcome) nameFirstFiles(w.pid);             // the view has framed the farmer: what it shows comes first
   peerTools.welcome(w.peers);
-  syncPresent();
   for (const p of w.peers || []) {
     view.partner.online(p.pid, p.online);
     ui.setPeer(p.pid, p.online);
     if (p.pose) view.partner.update([p.pose], w.serverNow);
     if (!p.online) view.avatars?.ride?.(p.pid, false);
   }
+  syncPresent();
   if (Array.isArray(w.chat) && typeof ui.chatHistory === 'function') ui.chatHistory(w.chat);
   document.title = `${BRAND} · ${store.state.players[w.pid]?.name ?? ''}`;
   if (settle) settle();
@@ -433,8 +433,10 @@ function syncPresent() {
   const vi = view.interior;
   if (!vi || typeof vi.setPresent !== 'function' || !controller || !store.state) return;
   const pids = [];
-  if (controller.interior?.inside) pids.push(store.pid);
-  for (const pid of Object.keys(store.state.players).sort()) if (pid !== store.pid && peerTools.get(pid) === 'indoors') pids.push(pid);
+  const inside = controller.interior?.inside;
+  const partner = store.pid === 'p1' ? 'p2' : 'p1';
+  if (inside) pids.push(store.pid);
+  if (peerTools.get(partner) === 'indoors' || (inside && view.partner.isOnline?.(partner) === false)) pids.push(partner);
   const k = pids.join(',');
   if (k === lastPresent) return;
   lastPresent = k;
@@ -508,10 +510,10 @@ function handle(m) {
       return view.partner.update(m.list, m.ts);       // rows carry their own time (row[7]); m.ts is the batch time
     case MSG.PEER:
       peerTools.online(m.pid, m.online);
-      syncPresent();
       // a farmer who left gets off the horse on this screen too (the last presence row still says 'horse')
       if (!m.online) view.avatars?.ride?.(m.pid, false);
       view.partner.online(m.pid, m.online);
+      syncPresent();
       feedback?.peer(m.pid, m.online);
       return ui.setPeer(m.pid, m.online);
     case MSG.GHOST:
