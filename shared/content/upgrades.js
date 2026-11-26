@@ -1,3 +1,4 @@
+import { MEADOW_CAST } from './cast.js';
 // The owners' wave-4 wish list (2026-10-04), the content half: Homestead upgrades (wish E), clearable wild weeds
 // (wish F) and the character look catalog (wish 9). Hand-authored; the rules read these through index.js
 // (shared/rules/upgrades.js, actions/weeds.js, actions/avatar.js keep fallbacks of the same shape).
@@ -93,7 +94,7 @@ const look = (id, name, hex) => (hex ? { id, name, hex } : { id, name });
  */
 export const AVATAR_LOOKS = {
   m: 'M1a',
-  bodies: [look('farmer_a', 'Build A'), look('farmer_b', 'Build B')],
+  bodies: [...Object.entries(MEADOW_CAST).map(([id, character]) => look(id, character.name)), look('farmer_a', 'Build A'), look('farmer_b', 'Build B')],
   hair: [look('short', 'Short'), look('long', 'Long'), look('ponytail', 'Ponytail'), look('bun', 'Bun'),
     look('curly', 'Curly'), look('braid', 'Braid'), look('buzz', 'Buzz cut')],
   hats: [look('none', 'No hat'), look('straw_hat', 'Straw hat'), look('cap', 'Farm cap'), look('beanie', 'Beanie'),

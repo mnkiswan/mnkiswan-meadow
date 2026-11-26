@@ -110,8 +110,8 @@ test('w4-rules: the look catalog is content\'s, the default look is the slot\'s,
   const s = farmAt(5);
   const a = W.lookOf(s, 'p1');
   const b = W.lookOf(s, 'p2');
-  assert.equal(a.body, 'farmer_a');
-  assert.equal(b.body, 'farmer_b');
+  assert.equal(a.body, 'mnki');
+  assert.equal(b.body, 'swan');
   s.players.p1.avatar = { hat: 'cap', top: '#aabbcc' };
   assert.equal(W.lookOf(s, 'p1').hat, 'cap');
   assert.equal(W.lookOf(s, 'p1').top, '#AABBCC');
@@ -200,6 +200,7 @@ test('your look: a pick changes only the preview; Save sends setAvatar with ever
   const { body, acts } = mount(P.avatar.avatarPanel, s, { name: 'avatar' });
   const save = buttons(body, 'Save my look')[0];
   assert.equal(save.getAttribute('aria-disabled'), 'true', 'nothing to save yet');
+  body.querySelectorAll('.av-opt').find((b) => b.dataset.v === 'farmer_a').click();
   const hat = body.querySelectorAll('.av-opt').find((b) => b.dataset.v === W.LOOKS.hats.at(-1).id);
   hat.click();
   assert.equal(acts.length, 0, 'a pick only changes the preview');

@@ -49,6 +49,9 @@
 // plate with dark text and a colour dot, scaled with the zoom (visual-26).
 //   seatOf(bench, pid, state) -> { x, z, face } | null   where a seated player sits, metres (pure, tested)
 import * as THREE from 'three';
+import { MEADOW_CAST, animationRig, farmerBody } from '../../../shared/content/cast.js';
+import { loadCastSkin } from './cast-skin.js';
+import { createCompanion } from '../game/companion.js';
 import { TILE_M, START } from '../../../shared/content/config.js';
 import { PresenceBuffer } from '../../../shared/net/interp.js';
 import { createGhost } from './ghost.js';
@@ -421,12 +424,6 @@ export function createAvatarsView(layers, overlay, toScreen) {
   let clock = 0;
   const pings = [];
 
-  function bodyFor(pid, p) {
-    const b = p && p.avatar && p.avatar.body;
-    if (b === 'farmer_a' || b === 'farmer_b') return b;
-    return pid === 'p2' ? 'farmer_b' : 'farmer_a';
-  }
-
   function ensure(pid, color, name, body) {
     let a = av.get(pid);
     if (!a) {
@@ -487,7 +484,7 @@ export function createAvatarsView(layers, overlay, toScreen) {
   // QA r3 R3-01: a rig that failed to load (manifest or file) is asked for again (retryMs, or at once on `online`);
   // a 4 s blip left a capsule for the session. An unknown key is no failure.
   async function loadRig(a) {
-    const key = `avatar:${a.body}`;
+    const key = `avatar:${animationRig(a.body)}`;
     const body = a.body;
     clearTimeout(a.rigT);
     a.rigT = 0;
@@ -508,7 +505,11 @@ export function createAvatarsView(layers, overlay, toScreen) {
       const info = models.info(key);
       const c = models.clone(key, { tint: info && info.tint ? { [info.tint]: a.color } : undefined });
       if (!c) return;
-      if (a.rig) { a.root.remove(a.rig.object); a.rig.mixer.stopAllAction(); }
+      if (a.rig) {
+        a.root.remove(a.rig.object);
+        if (a.rig.cast) a.root.remove(a.rig.cast.root);
+        a.rig.mixer.stopAllAction();
+      }
       const mixer = new THREE.AnimationMixer(c.object);
       const actions = {};
       for (const [name, clip] of c.clips) actions[name] = mixer.clipAction(clip);
@@ -550,6 +551,15 @@ export function createAvatarsView(layers, overlay, toScreen) {
       c.object.position.y = -drop;
       a.root.add(c.object);
       a.rigOf = body;
+      const rig = a.rig;
+      if (Object.hasOwn(MEADOW_CAST, body)) {
+        loadCastSkin(body, c.object, bones).then((skin) => {
+          if (a.rig !== rig || a.body !== body) return;
+          rig.cast = skin;
+          a.root.add(skin.root);
+          skin.update();
+        }).catch((err) => console.warn(`Keeping the animated farmer for ${body}`, err));
+      }
       dressLook(a);
       a.placeholder.visible = false;
       playBase(a, 'Idle', 1, 0);
@@ -1520,11 +1530,18 @@ export function createAvatarsView(layers, overlay, toScreen) {
           if (p.tool !== a.tool && !mounted && !a.fish && !inside) setTool(a, p.tool);
         }
       }
+      if (a.companion && lastState) {
+        const leader = av.get(myPid);
+        if (a.pose && leader?.pose) {
+          a.pose = a.companion(lastState, a.pose, leader.pose, dt);
+          if (a.pose.a) want = Math.max(want, WANT.MOVING);
+        }
+      }
       if (!a.pose) continue;
       // seated on a bench: the seat, not the presence pose; the sit pose blends in and out over 200 ms (RD-17); a farmer
       // fishing from a Fishing Dock sits on its end (wave 3)
       if (a.fishSeat && !a.seat) { a.seatFromFish = true; a.seat = a.fishSeat; a.lastSeat = a.fishSeat; } else if (a.seatFromFish && !a.fishSeat) { a.seatFromFish = false; a.seat = null; }
-      const sitGoal = a.seat ? 1 : 0;
+      const sitGoal = a.seat && !a.companion ? 1 : 0;
       if (a.sitK !== sitGoal) { a.sitK = sitGoal > a.sitK ? Math.min(1, a.sitK + dt / 0.2) : Math.max(0, a.sitK - dt / 0.2); want = Math.max(want, 2); }
       const seat = a.seat || a.lastSeat;
       const sk = seat ? a.sitK : 0;
@@ -1574,6 +1591,7 @@ export function createAvatarsView(layers, overlay, toScreen) {
         sitPose(a, sk, seat);
         if (a.riding) want = Math.max(want, ridePose(a, dt));
         if (a.fish) want = Math.max(want, fishPose(a, dt));
+        a.rig.cast?.update({ sitting: sk > 0, riding: a.riding, fishing: a.fish });
         placeCrown(a, !!crown && crown.pids.has(a.pid) && t < crown.until && (a.online || a.self));
         if (sk === 0 && !a.seat) a.lastSeat = null;
         // still: frames only while a farmer actually moves (performance-08)
@@ -1600,7 +1618,7 @@ export function createAvatarsView(layers, overlay, toScreen) {
       const px = tx / TILE_M; const pz = tz / TILE_M;
       // the plate sits 10 px above the measured head top (hat or hair: VISUAL-AFTER C5), higher on horseback
       const sitDy = a.rig ? sk * ((seat && seat.y ? seat.y : SEAT_HIPS.sunset_bench) - (a.rig.hipsY || 0.95)) : -sk * 0.5;
-      const headY = (a.rig ? a.rig.topY : 2.0) + sitDy + (a.riding ? RIDE.saddle - (a.rig ? a.rig.hipsY * 0.55 : 0.5) : 0);
+      const headY = (a.rig?.cast?.root.visible ? 1.95 : a.rig?.topY ?? 2.0) + sitDy + (a.riding ? RIDE.saddle - (a.rig ? a.rig.hipsY * 0.55 : 0.5) : 0);
       const s = visible ? toScreen(px, pz, headY) : null;
       if (s && s.visible) {
         const feet = toScreen(px, pz, 0);
@@ -1676,14 +1694,22 @@ export function createAvatarsView(layers, overlay, toScreen) {
     },
     setTargetLocator(fn) { locateTarget = typeof fn === 'function' ? fn : () => null; },
     /** Players from the state (names, colours, bodies) and which one is me. */
-    setPlayers(players, me) {
+    setPlayers(players, me, state) {
+      lastState = state ?? lastState;
       if (me !== undefined) myPid = me;
-      for (const [pid, p] of Object.entries(players)) {
-        const a = ensure(pid, p.color, p.name, bodyFor(pid, p));
+      for (const pid of ['p1', 'p2']) {
+        const p = players[pid];
+        const body = farmerBody(pid, p);
+        const name = p?.name ?? MEADOW_CAST[body]?.name ?? MEADOW_CAST[farmerBody(pid)].name;
+        const a = ensure(pid, p?.color ?? (pid === 'p2' ? '#FF7A6B' : '#C2412D'), name, body);
         a.self = pid === myPid;
-        a.player = p;
+        a.player = p ?? null;
         dressLook(a);
-        if (!a.pose) placeRoot(a, { ...(START.spawn[pid] || START.spawn.p1), f: 0, a: 0 });
+        if (!a.pose) placeRoot(a, { ...grid.spawnAt(lastState, pid), f: 0, a: 0 });
+        if (!a.self && !a.peerSeen && !a.companion) {
+          a.online = false;
+          a.companion = createCompanion();
+        }
       }
       syncPets(players);
     },
@@ -1691,12 +1717,22 @@ export function createAvatarsView(layers, overlay, toScreen) {
       const a = av.get(pid);
       if (!a) return;
       if (online && !a.online && a.pose && fx) fx.play({ e: 'joined', pid }, new THREE.Vector3(a.pose.x * TILE_M, 0, a.pose.z * TILE_M));
+      const changed = a.online !== online;
+      a.peerSeen = true;
       a.online = online;
-      a.root.visible = online || a.self;
+      a.root.visible = true;
+      if (online) a.companion = null;
+      else if (!a.self && !a.companion) a.companion = createCompanion();
       if (!online) {
         a.ring.visible = false; a.ghost.hide(); a.plate.style.visibility = 'hidden';
         // a leaver gets off the horse here too, and a stale 'horse' row cannot re-mount them on return (QA2 CL-01)
-        if (!a.self) { if (a.riding) setRiding(a, false); a.buf.clear(); }
+        if (!a.self && changed) {
+          if (a.riding) setRiding(a, false);
+          if (a.fish) { a.fish = null; a.fishSeat = null; }
+          a.pending = null;
+          a.buf.clear();
+          setTool(a, null);
+        }
       }
     },
     me(pose) {
@@ -1711,7 +1747,7 @@ export function createAvatarsView(layers, overlay, toScreen) {
       for (const [pid, x, z, f, an, cx, cz, rts, tool, hop] of list) {
         if (pid === myPid) continue;
         const a = av.get(pid);
-        if (!a) continue;
+        if (!a?.online) continue;
         if (hop) {
           a.buf.clear();
           if (fx && a.pose) fx.play({ e: 'joined', pid }, new THREE.Vector3(a.pose.x * TILE_M, 0, a.pose.z * TILE_M));
@@ -1728,6 +1764,7 @@ export function createAvatarsView(layers, overlay, toScreen) {
       a.ghost.update({ x: g.x, z: g.z }, true, null, a.color);
     },
     poseOf(pid) { return av.get(pid)?.pose ?? null; },
+    isOnline(pid) { return av.get(pid)?.online === true; },
     screenPosOf(pid) {
       const a = av.get(pid);
       if (!a || !a.pose || !a.root.visible) return null;

@@ -25,6 +25,8 @@
 //     interior.stats() -> { items, figures, visit }
 //   ROOM { w, d, h, cell }   BUILT_IN cells   BUILT_IN_DEFS   itemPlacement(o, def, absolute?) -> { x, z, y, yaw, wall }
 import * as THREE from 'three';
+import { MEADOW_CAST, animationRig, farmerBody } from '../../../shared/content/cast.js';
+import { loadCastSkin } from './cast-skin.js';
 import { defOf, INTERIOR, CONTENT } from '../../../shared/content/index.js';
 import { box, cyl, cone, ball, gable, ring, merge, geoPart } from './world-kit.js';
 import { models } from './models.js';
@@ -350,7 +352,7 @@ function keyOfFurniture(batch, id) {
  *  Grandma: silver hair in a bun, spectacles and a lavender shawl, 0.9 of the farmers' size. */
 export function makeFigure(body, color, { scale = 1, grandma = false, onReady = null } = {}) {
   const rec = { root: new THREE.Group(), mixer: null, ready: false, clips: null };
-  const mk = `avatar:${body}`;
+  const mk = `avatar:${animationRig(body)}`;
   if (!models.has(mk)) return rec;
   models.ready([mk]).then(() => {
     const info = models.info(mk);
@@ -399,6 +401,14 @@ export function makeFigure(body, color, { scale = 1, grandma = false, onReady = 
     rec.mixer = new THREE.AnimationMixer(c.object);
     const idle = c.clips.get('Idle') || c.clips.get('IdleNeutral');
     if (idle) rec.mixer.clipAction(idle).play();
+    if (!grandma && Object.hasOwn(MEADOW_CAST, body)) {
+      loadCastSkin(body, c.object, bones).then((skin) => {
+        rec.cast = skin;
+        rec.root.add(skin.root);
+        skin.update();
+        onReady?.(rec);
+      }).catch((err) => console.warn(`Keeping the animated indoor farmer for ${body}`, err));
+    }
     rec.clips = c.clips;
     rec.ready = true;
     if (onReady) onReady(rec);
@@ -574,8 +584,11 @@ export function createInterior({ renderer = null } = {}) {
   }
 
   function figure(key, body, color, opts = {}) {
-    if (figures.has(key)) return figures.get(key);
+    const previous = figures.get(key);
+    if (previous?.body === body) return previous;
+    if (previous) { scene.remove(previous.root); previous.mixer?.stopAllAction(); }
     const rec = makeFigure(body, color, { ...opts, onReady: () => { shadowDirty = true; } });
+    rec.body = body;
     rec.root.name = `figure-${key}`;
     scene.add(rec.root);
     figures.set(key, rec);
@@ -588,7 +601,6 @@ export function createInterior({ renderer = null } = {}) {
     setTimeout(() => a.fadeOut(0.3), 1600);
   }
 
-  const bodyFor = (pid, p) => { const b = p?.avatar?.body; return b === 'farmer_a' || b === 'farmer_b' ? b : pid === 'p2' ? 'farmer_b' : 'farmer_a'; };
   // where people like to stand (metres, yaw toward the room's front): by the fire first; a spot whose cell holds
   // furniture or the room's own pieces is skipped
   const STANDS = [[6.5, 2.5, 0.6], [3.5, 2.5, -0.2], [7.5, 3.5, 0.9], [4.5, 3.5, 0.3], [6.5, 6.5, 0.7], [8.5, 6.5, 0.9], [5.5, 6.5, 0.2], [7.5, 1.5, 0.8]];
@@ -602,13 +614,13 @@ export function createInterior({ renderer = null } = {}) {
   }
   function refreshFigures() {
     const pl = state?.players || {};
-    const inside = (present || (me ? [me] : [])).filter((p) => pl[p]);
+    const inside = (present || (me ? [me] : [])).filter((p) => p === 'p1' || p === 'p2');
     const want = new Set(inside.map((p) => `p:${p}`));
     if (visit.phase !== 'none') want.add('grandma');
     for (const [k, rec] of figures) if (!want.has(k)) { rec.root.visible = false; }
     const free = freeStands();
     inside.forEach((pid, i) => {
-      const rec = figure(`p:${pid}`, bodyFor(pid, pl[pid]), pl[pid].color || (pid === 'p2' ? '#FF7A6B' : '#2BB3A3'));
+      const rec = figure(`p:${pid}`, farmerBody(pid, pl[pid]), pl[pid]?.color || (pid === 'p2' ? '#FF7A6B' : '#2BB3A3'));
       rec.root.visible = true;
       const [x, z, yaw] = free[i] || STANDS[i % STANDS.length];
       rec.root.position.set(x, 0, z);
@@ -731,7 +743,11 @@ export function createInterior({ renderer = null } = {}) {
       }
       const inNow = visit.phase !== 'none' && (visit.stop === 'parlour' || night > 0.5);
       if (inNow !== grandmaInside) { grandmaInside = inNow; const g = figures.get('grandma'); if (g) { g.root.visible = inNow; shadowDirty = true; } }
-      for (const rec of figures.values()) if (rec.mixer && rec.root.visible) rec.mixer.update(dt);
+      for (const rec of figures.values()) {
+        if (!rec.mixer || !rec.root.visible) continue;
+        rec.mixer.update(dt);
+        rec.cast?.update();
+      }
       if (shadowDirty && renderer) { renderer.shadowMap.needsUpdate = true; shadowDirty = false; }
       void now;
       return want;
